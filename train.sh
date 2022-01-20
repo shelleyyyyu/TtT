@@ -1,5 +1,5 @@
 gamma=0.5
-dname="HybirdSet"  # "SIGHAN15" "HybirdSet", "TtTSet"
+dname="SIGHAN15"  # "SIGHAN15" "HybirdSet", "TtTSet"
 dpath="./data/"$dname
 bpath="./model/bert/"
 cpath="./ckpt/"$dname"_"$gamma"/"
@@ -16,7 +16,7 @@ python -u main.py \
     --lr 1e-5 \
     --dropout 0.1 \
     --number_epoch 1000 \
-    --gpu_id 4 \
+    --gpu_id 0 \
     --print_every 50 \
     --save_every 500 \
     --fine_tune \
