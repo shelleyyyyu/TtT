@@ -224,7 +224,7 @@ if __name__ == "__main__":
     max_dev_f1 = 0.0
 
     train_f1_list, train_precision_list, train_recall_list = [], [], []
-    dev_f1_list, dev_precision_list, dev_recall_list = [], [], []
+    dev_f1_list, dev_precision_list, dev_recall_list, dev_acc_list = [], [], [], []
 
     prediction_max_len = args.prediction_max_len # 用来分块截取prediction的
     dev_eval_path = args.dev_eval_path
@@ -330,31 +330,34 @@ if __name__ == "__main__":
                         rr += ri
                         ff += fi
 
+                    one_dev_acc = acc / len(gold_tag_list)
                     one_dev_f1 = ff / len(gold_tag_list)
                     one_dev_precision = pp / len(gold_tag_list)
                     one_dev_recall = rr / len(gold_tag_list)
-                    
+
+                    dev_acc_list.append(one_dev_acc)
                     dev_f1_list.append(one_dev_f1)
                     dev_precision_list.append(one_dev_precision)
                     dev_recall_list.append(one_dev_recall)
 
-                    print ('At epoch %d, official dev f1 : %f, precision : %f, recall : %f' % \
-                            (epoch, one_dev_f1, one_dev_precision, one_dev_recall))
+                    print ('At epoch %d, official dev acc : %f, f1 : %f, precision : %f, recall : %f' % \
+                            (epoch, one_dev_acc, one_dev_f1, one_dev_precision, one_dev_recall))
                     torch.save({'args':args, 'model':model.state_dict(), 
                             'bert_args': bert_args, 
                             'bert_vocab':model.bert_vocab
                             }, directory + '/epoch_%d_dev_f1_%.3f'%(epoch + 1, one_dev_f1))
                     max_dev_f1 = one_dev_f1
                     
-                model.train() # !!!!!!
+                model.train()
 
 
     max_dev_f1_idx = np.argmax(dev_f1_list)
     max_dev_f1 = dev_f1_list[max_dev_f1_idx]
     max_dev_precision = dev_precision_list[max_dev_f1_idx]
     max_dev_recall = dev_recall_list[max_dev_f1_idx]
+    max_dev_acc = dev_acc_list[max_dev_f1_idx]
 
     print ('-----------------------------------------------------')
-    print ('At this run, the maximum dev f1:%f, dev precision:%f, dev recall:%f' % \
-        (max_dev_f1, max_dev_precision, max_dev_recall))
+    print ('At this run, the maximum dev acc:%f, f1:%f, dev precision:%f, dev recall:%f' % \
+        (max_dev_acc, max_dev_f1, max_dev_precision, max_dev_recall))
     print ('-----------------------------------------------------')
