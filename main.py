@@ -409,7 +409,6 @@ if __name__ == "__main__":
                     ckpt_fname = directory + '/epoch_%d_test_f1_%.3f' % (epoch + 1, one_test_f1)
                     print('At epoch %d, official test acc : %f, f1 : %f, precision : %f, recall : %f' % \
                           (epoch, one_test_acc, one_test_f1, one_test_precision, one_test_recall))
-                    exit()
 
                 model.train()
 
