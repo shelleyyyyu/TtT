@@ -178,6 +178,7 @@ def parse_config():
     parser.add_argument('--model_save_path', type=str)
     parser.add_argument('--prediction_max_len', type=int)
     parser.add_argument('--dev_eval_path', type=str)
+    parser.add_argument('--test_eval_path', type=str)
     parser.add_argument('--final_eval_path', type=str)
     parser.add_argument('--l2_lambda', type=float)
     parser.add_argument('--training_max_len', type=int)
