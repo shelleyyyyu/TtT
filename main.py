@@ -329,20 +329,22 @@ if __name__ == "__main__":
                             gold_tag_list.append(dev_batch_tag_list[0])
                             pred_tag_list.append(pred_tags)
                     assert len(gold_tag_list) == len(pred_tag_list) 
-                    pp, rr, ff = 0., 0., 0.
+                    pp, rr, ff, aa = 0., 0., 0., 0.0
                     for glist, plist in zip(gold_tag_list, pred_tag_list):
                         acc = 0.
                         for gi, gtag in enumerate(glist):
                             if gtag == plist[gi]:
                                 acc += 1
+                        ai = acc / (len(plist)+1e-8)
                         pi = acc / (len(plist)+1e-8)
                         ri = acc / (len(glist)+1e-8)
                         fi = 2 * pi * ri / (pi + ri + 1e-8)
+                        aa += ai
                         pp += pi
                         rr += ri
                         ff += fi
 
-                    one_dev_acc = acc / len(gold_tag_list)
+                    one_dev_acc = aa / len(gold_tag_list)
                     one_dev_f1 = ff / len(gold_tag_list)
                     one_dev_precision = pp / len(gold_tag_list)
                     one_dev_recall = rr / len(gold_tag_list)
