@@ -29,7 +29,8 @@ def init_bert_model(args, device, bert_vocab):
     bert_model = BERTLM(device, bert_vocab, bert_args.embed_dim, bert_args.ff_embed_dim, bert_args.num_heads, \
         bert_args.dropout, bert_args.layers, bert_args.approx)
     bert_model.load_state_dict(bert_ckpt['model'])
-    bert_model = bert_model.cuda(device)
+    if torch.cuda.is_available():
+        bert_model = bert_model.cuda(device)
     if args.freeze == 1:
         for p in bert_model.parameters():
             p.requires_grad=False
@@ -101,16 +102,22 @@ class myModel(nn.Module):
 
         # in_mask_matrix.size() == [batch_size, seq_len]
         # in_tag_matrix.size() == [batch_size, seq_len]
-        mask_matrix = torch.tensor(in_mask_matrix, dtype=torch.uint8).t_().contiguous().cuda(self.device)
-        tag_matrix = torch.LongTensor(in_tag_matrix).t_().contiguous().cuda(self.device) # size = [seq_len, batch_size]
+        mask_matrix = torch.tensor(in_mask_matrix, dtype=torch.uint8).t_().contiguous()
+        tag_matrix = torch.LongTensor(in_tag_matrix).t_().contiguous()  # size = [seq_len, batch_size]
+        if torch.cuda.is_available():
+            mask_matrix = mask_matrix.cuda(self.device)
+            tag_matrix = tag_matrix.cuda(self.device)
         assert mask_matrix.size() == tag_matrix.size()
         assert mask_matrix.size() == torch.Size([seq_len, current_batch_size])
 
         # input text_data.size() = [batch_size, seq_len]
         data = batchify(text_data, self.vocab) # data.size() == [seq_len, batch_size]
-        data = data.cuda(self.device)
-         
-        sequence_representation = self.bert_model.work(data)[0].cuda(self.device) # [seq_len, batch_size, embedding_size]
+        if torch.cuda.is_available():
+            data = data.cuda(self.device)
+
+        sequence_representation = self.bert_model.work(data)[0] # [seq_len, batch_size, embedding_size]
+        if torch.cuda.is_available():
+            sequence_representation = sequence_representation.cuda(self.device) # [seq_len, batch_size, embedding_size]
         # dropout
         sequence_representation = F.dropout(sequence_representation, p=self.dropout, training=self.training)
         sequence_representation = sequence_representation.view(current_batch_size * seq_len, self.embedding_size)
@@ -210,7 +217,9 @@ if __name__ == "__main__":
     loss_type = args.loss_type
     l2_lambda = args.l2_lambda
     model = myModel(bert_model, number_class, embedding_size, batch_size, args.dropout, args.gpu_id, bert_vocab, loss_type)
-    model = model.cuda(args.gpu_id)
+    if torch.cuda.is_available():
+        model = model.cuda(args.gpu_id)
+
     print ('Model construction finished.')
 
     # Data Preparation

@@ -107,7 +107,10 @@ class DataLoader:
         with open(in_path, 'r', encoding = 'utf8') as i:
             lines = i.readlines()
             for l in lines:
-                one_text, one_tag = self.process_one_line(l)
+                if 'OCR' in in_path:
+                    one_text, one_tag = self.process_one_line_ocr(l)
+                else:
+                    one_text, one_tag = self.process_one_line(l)
                 if len(one_text) > self.train_max_len: # 限制训练过程中序列的最大长度
                     continue
                 else:
@@ -121,6 +124,27 @@ class DataLoader:
         assert len(content_list) == 3
         text_list = [w for w in content_list[0].strip()] #+ ['<-SEP->']
         tag_name_list = [w for w in content_list[1].strip()] + ['<-SEP->'] 
+        if len(tag_name_list) > len(text_list):
+            text_list += ['<-MASK->'] * (len(tag_name_list) - len(text_list))
+            text_list += ['<-SEP->']
+            tag_name_list += ['<-SEP->']
+        elif len(tag_name_list) < len(text_list):
+            tag_name_list += ['<-SEP->'] + ['<-PAD->'] * (len(text_list) - len(tag_name_list))
+            text_list += ['<-SEP->']
+        else:
+            tag_name_list += ['<-SEP->']
+            text_list += ['<-SEP->']
+        assert len(text_list) == len(tag_name_list)
+        tag_list = list()
+        for token in tag_name_list:
+            tag_list.append(self.label_dict.token2idx(token))
+        return text_list, tag_list
+
+    def process_one_line_ocr(self, line):
+        content_list = line.strip().split('\t')
+        assert len(content_list) == 3
+        text_list = [w for w in content_list[1].strip()] #+ ['<-SEP->']
+        tag_name_list = [w for w in content_list[2].strip()] + ['<-SEP->']
         if len(tag_name_list) > len(text_list):
             text_list += ['<-MASK->'] * (len(tag_name_list) - len(text_list))
             text_list += ['<-SEP->']
