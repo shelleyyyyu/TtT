@@ -397,14 +397,16 @@ if __name__ == "__main__":
                         for gi, gtag in enumerate(glist):
                             if gtag == plist[gi]:
                                 acc += 1
+                        ai = acc / (len(plist) + 1e-8)
                         pi = acc / (len(plist) + 1e-8)
                         ri = acc / (len(glist) + 1e-8)
                         fi = 2 * pi * ri / (pi + ri + 1e-8)
+                        aa += ai
                         pp += pi
                         rr += ri
                         ff += fi
 
-                    one_test_acc = acc / len(gold_tag_list)
+                    one_test_acc = aa / len(gold_tag_list)
                     one_test_f1 = ff / len(gold_tag_list)
                     one_test_precision = pp / len(gold_tag_list)
                     one_test_recall = rr / len(gold_tag_list)
