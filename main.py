@@ -391,7 +391,7 @@ if __name__ == "__main__":
                             gold_test_tag_list.append(test_batch_tag_list[0])
                             pred_test_tag_list.append(test_pred_tags)
                     assert len(gold_test_tag_list) == len(pred_test_tag_list)
-                    pp, rr, ff = 0., 0., 0.
+                    pp, rr, ff, aa = 0., 0., 0., 0.
                     for glist, plist in zip(gold_tag_list, pred_tag_list):
                         acc = 0.
                         for gi, gtag in enumerate(glist):
