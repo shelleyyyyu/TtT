@@ -318,8 +318,7 @@ if __name__ == "__main__":
                             dev_batch_text_list, dev_batch_tag_list = nerdata.get_next_batch(batch_size = 1, mode = 'dev')
                             dev_tag_matrix = process_batch_tag(dev_batch_tag_list, nerdata.label_dict)
                             dev_mask_matrix = make_mask(dev_batch_tag_list)
-                            dev_batch_result, _, _, _ = \
-                            model(dev_batch_text_list, dev_mask_matrix, dev_tag_matrix, fine_tune = False)
+                            dev_batch_result, _, _, _ = model(dev_batch_text_list, dev_mask_matrix, dev_tag_matrix, fine_tune = False)
 
                             dev_text = ''
                             for token in dev_batch_text_list[0]:
@@ -359,69 +358,75 @@ if __name__ == "__main__":
                     one_dev_recall = rr / len(gold_tag_list)
                     ckpt_fname = directory + '/epoch_%d_dev_f1_%.3f'%(epoch + 1, one_dev_f1)
 
-                    dev_acc_list.append(one_dev_acc)
-                    dev_f1_list.append(one_dev_f1)
-                    dev_precision_list.append(one_dev_precision)
-                    dev_recall_list.append(one_dev_recall)
-                    dev_ckpt_list.append(ckpt_fname)
+                    if one_dev_f1 > max_dev_f1:
+                        max_dev_f1 = one_dev_f1
+                        dev_acc_list.append(one_dev_acc)
+                        dev_f1_list.append(one_dev_f1)
+                        dev_precision_list.append(one_dev_precision)
+                        dev_recall_list.append(one_dev_recall)
+                        dev_ckpt_list.append(ckpt_fname)
 
-                    print ('At epoch %d, official dev acc : %f, f1 : %f, precision : %f, recall : %f' % \
-                            (epoch, one_dev_acc, one_dev_f1, one_dev_precision, one_dev_recall))
-                    torch.save({'args':args, 'model':model.state_dict(), 
-                            'bert_args': bert_args, 
-                            'bert_vocab':model.bert_vocab
-                            }, ckpt_fname)
+                        print ('At epoch %d, official dev acc : %f, f1 : %f, precision : %f, recall : %f' % \
+                                (epoch, one_dev_acc, one_dev_f1, one_dev_precision, one_dev_recall))
+                        torch.save({'args':args, 'model':model.state_dict(),
+                                'bert_args': bert_args,
+                                'bert_vocab':model.bert_vocab
+                                }, ckpt_fname)
 
-                ###################################
+                        ###################################
 
-                gold_test_tag_list = []
-                pred_test_tag_list = []
-                with torch.no_grad():
-                    with open(test_eval_path%epoch, 'w', encoding='utf8') as o:
-                        for test_step in range(test_step_num):
-                            test_batch_text_list, test_batch_tag_list = nerdata.get_next_batch(batch_size=1, mode='test')
-                            test_tag_matrix = process_batch_tag(test_batch_tag_list, nerdata.label_dict)
-                            test_mask_matrix = make_mask(test_batch_tag_list)
-                            test_batch_result, _, _, _ = model(test_batch_text_list, test_mask_matrix, test_tag_matrix, fine_tune=False)
+                        gold_test_tag_list = []
+                        pred_test_tag_list = []
+                        with torch.no_grad():
+                            with open(test_eval_path%epoch, 'w', encoding='utf8') as o:
+                                for test_step in range(test_step_num):
+                                    test_batch_text_list, test_batch_tag_list = nerdata.get_next_batch(batch_size=1, mode='test')
+                                    test_tag_matrix = process_batch_tag(test_batch_tag_list, nerdata.label_dict)
+                                    test_mask_matrix = make_mask(test_batch_tag_list)
+                                    test_batch_result, _, _, _ = model(test_batch_text_list, test_mask_matrix, test_tag_matrix, fine_tune=False)
 
-                            test_text = ''
-                            for token in test_batch_text_list[0]:
-                                test_text += token + ' '
-                            test_text = test_text.strip()
+                                    test_text = ''
+                                    for token in test_batch_text_list[0]:
+                                        test_text += token + ' '
+                                    test_text = test_text.strip()
 
-                            valid_test_text_len = len(test_batch_text_list[0])
-                            test_tag_str = ''
-                            test_pred_tags = []
-                            for tag in test_batch_result[0][1:valid_test_text_len + 1]:
-                                test_tag_str += id_label_dict[int(tag)] + ' '
-                                test_pred_tags.append(int(tag))
-                            test_tag_str = test_tag_str.strip()
-                            o.writelines(test_text + '\t' + test_tag_str + '\n')
-                            gold_test_tag_list.append(test_batch_tag_list[0])
-                            pred_test_tag_list.append(test_pred_tags)
-                    assert len(gold_test_tag_list) == len(pred_test_tag_list)
-                    pp, rr, ff, aa = 0., 0., 0., 0.
-                    for glist, plist in zip(gold_tag_list, pred_tag_list):
-                        acc = 0.
-                        for gi, gtag in enumerate(glist):
-                            if gtag == plist[gi]:
-                                acc += 1
-                        ai = acc / (len(plist) + 1e-8)
-                        pi = acc / (len(plist) + 1e-8)
-                        ri = acc / (len(glist) + 1e-8)
-                        fi = 2 * pi * ri / (pi + ri + 1e-8)
-                        aa += ai
-                        pp += pi
-                        rr += ri
-                        ff += fi
+                                    valid_test_text_len = len(test_batch_text_list[0])
+                                    test_tag_str = ''
+                                    test_pred_tags = []
+                                    for tag in test_batch_result[0][1:valid_test_text_len + 1]:
+                                        test_tag_str += id_label_dict[int(tag)] + ' '
+                                        test_pred_tags.append(int(tag))
+                                    test_tag_str = test_tag_str.strip()
+                                    o.writelines(test_text + '\t' + test_tag_str + '\n')
+                                    gold_test_tag_list.append(test_batch_tag_list[0])
+                                    pred_test_tag_list.append(test_pred_tags)
+                                    # print(test_pred_tags)
+                                    # print(gold_test_tag_list)
+                                    # print([id_label_dict[t] for t in test_pred_tags])
+                                    # print([id_label_dict[t] for t in gold_test_tag_list[0]])
+                                    # exit()
+                            assert len(gold_test_tag_list) == len(pred_test_tag_list)
+                            pp, rr, ff, aa = 0., 0., 0., 0.
+                            for glist, plist in zip(gold_tag_list, pred_tag_list):
+                                acc = 0.
+                                for gi, gtag in enumerate(glist):
+                                    if gtag == plist[gi]:
+                                        acc += 1
+                                ai = acc / (len(plist) + 1e-8)
+                                pi = acc / (len(plist) + 1e-8)
+                                ri = acc / (len(glist) + 1e-8)
+                                fi = 2 * pi * ri / (pi + ri + 1e-8)
+                                aa += ai
+                                pp += pi
+                                rr += ri
+                                ff += fi
 
-                    one_test_acc = aa / len(gold_tag_list)
-                    one_test_f1 = ff / len(gold_tag_list)
-                    one_test_precision = pp / len(gold_tag_list)
-                    one_test_recall = rr / len(gold_tag_list)
-                    ckpt_fname = directory + '/epoch_%d_test_f1_%.3f' % (epoch + 1, one_test_f1)
-                    print('At epoch %d, official test acc : %f, f1 : %f, precision : %f, recall : %f' % \
-                          (epoch, one_test_acc, one_test_f1, one_test_precision, one_test_recall))
+                            one_test_acc = aa / len(gold_tag_list)
+                            one_test_f1 = ff / len(gold_tag_list)
+                            one_test_precision = pp / len(gold_tag_list)
+                            one_test_recall = rr / len(gold_tag_list)
+                            ckpt_fname = directory + '/epoch_%d_test_f1_%.3f' % (epoch + 1, one_test_f1)
+                            print('At epoch %d, official test acc : %f, f1 : %f, precision : %f, recall : %f' % (epoch, one_test_acc, one_test_f1, one_test_precision, one_test_recall))
 
                 model.train()
 
