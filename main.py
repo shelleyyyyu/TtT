@@ -112,6 +112,7 @@ class myModel(nn.Module):
 
         # input text_data.size() = [batch_size, seq_len]
         data = batchify(text_data, self.vocab) # data.size() == [seq_len, batch_size]
+        input_data = data
         if torch.cuda.is_available():
             data = data.cuda(self.device)
 
@@ -147,19 +148,19 @@ class myModel(nn.Module):
         
         if self.loss_type == 'CRF':
             loss = loss_crf
-            return self.decode_result, loss, loss_crf.item(), 0.0
+            return self.decode_result, loss, loss_crf.item(), 0.0, input_data
         elif self.loss_type == 'FT_CRF':
             loss = loss_ft + loss_crf
-            return self.decode_result, loss, loss_crf.item(), loss_ft.item()
+            return self.decode_result, loss, loss_crf.item(), loss_ft.item(), input_data
         elif self.loss_type == 'FC_FT_CRF':
             loss = loss_ft_fc + loss_crf_fc
-            return self.decode_result, loss, loss_crf_fc.item(), loss_ft_fc.item()
+            return self.decode_result, loss, loss_crf_fc.item(), loss_ft_fc.item(), input_data
         elif self.loss_type == 'FC_CRF':
             loss = loss_crf_fc
-            return self.decode_result, loss, loss_crf_fc.item(), 0.0
+            return self.decode_result, loss, loss_crf_fc.item(), 0.0, input_data
         else:
             print("error")
-            return self.decode_result, 0, 0, 0
+            return self.decode_result, 0, 0, 0, input_data
 
 import argparse
 def parse_config():
@@ -279,7 +280,7 @@ if __name__ == "__main__":
             # tag mask matrix
             train_mask_matrix = make_mask(train_batch_tag_list)
             # forward computation
-            train_batch_result, train_loss, loss_crf, loss_ft = \
+            train_batch_result, train_loss, loss_crf, loss_ft, train_input_data = \
             model(train_batch_text_list, train_mask_matrix, train_tag_matrix, fine_tune, args.gamma)
 
             l2_reg = None
@@ -321,7 +322,7 @@ if __name__ == "__main__":
                             dev_batch_text_list, dev_batch_tag_list = nerdata.get_next_batch(batch_size = 1, mode = 'dev')
                             dev_tag_matrix = process_batch_tag(dev_batch_tag_list, nerdata.label_dict)
                             dev_mask_matrix = make_mask(dev_batch_tag_list)
-                            dev_batch_result, _, _, _ = model(dev_batch_text_list, dev_mask_matrix, dev_tag_matrix, fine_tune = False)
+                            dev_batch_result, _, _, _, dev_input_data = model(dev_batch_text_list, dev_mask_matrix, dev_tag_matrix, fine_tune = False)
 
                             dev_text = ''
                             for token in dev_batch_text_list[0]:
@@ -337,11 +338,10 @@ if __name__ == "__main__":
                             dev_tag_str = dev_tag_str.strip()
                             out_line = dev_text + '\t' + dev_tag_str
                             o.writelines(out_line + '\n')
-                            wrong_label_list = list([int(label_id_dict[w]) for w in dev_batch_text_list[0]])
-                            wrong_tag_list.append(wrong_label_list)
+                            # wrong_label_list = list([int(label_id_dict[w]) for w in dev_batch_text_list[0]])
+                            wrong_tag_list.append(dev_input_data[1:].t()[0].tolist())
                             gold_tag_list.append(dev_batch_tag_list[0])
                             pred_tag_list.append(pred_tags)
-
                     assert len(gold_tag_list) == len(pred_tag_list) 
                     # pp, rr, ff, aa = 0., 0., 0., 0.0
                     right_true, right_false, wrong_true, wrong_false = 0, 0, 0, 0
@@ -414,7 +414,7 @@ if __name__ == "__main__":
                                     test_batch_text_list, test_batch_tag_list = nerdata.get_next_batch(batch_size=1, mode='test')
                                     test_tag_matrix = process_batch_tag(test_batch_tag_list, nerdata.label_dict)
                                     test_mask_matrix = make_mask(test_batch_tag_list)
-                                    test_batch_result, _, _, _ = model(test_batch_text_list, test_mask_matrix, test_tag_matrix, fine_tune=False)
+                                    test_batch_result, _, _, _, test_input_data = model(test_batch_text_list, test_mask_matrix, test_tag_matrix, fine_tune=False)
 
                                     test_text = ''
                                     for token in test_batch_text_list[0]:
