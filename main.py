@@ -206,8 +206,10 @@ if __name__ == "__main__":
     bert_model, bert_vocab, bert_args = init_bert_model(args, args.gpu_id, args.bert_vocab)
     
     id_label_dict = {}#get_id_label_dict(bert_vocab)
+    label_id_dict = {}
     for lid, label in enumerate(bert_vocab._idx2token):
         id_label_dict[lid] = label
+        label_id_dict[label] = lid
     
     batch_size = args.batch_size
     number_class = len(id_label_dict) #args.number_class
@@ -311,6 +313,7 @@ if __name__ == "__main__":
             if acc_bs % args.save_every == 0:
                 model.eval()
                 gold_tag_list = []
+                wrong_tag_list = []
                 pred_tag_list = []
                 with torch.no_grad():
                     with open(dev_eval_path, 'w', encoding = 'utf8') as o:
@@ -334,45 +337,73 @@ if __name__ == "__main__":
                             dev_tag_str = dev_tag_str.strip()
                             out_line = dev_text + '\t' + dev_tag_str
                             o.writelines(out_line + '\n')
+                            wrong_label_list = list([int(label_id_dict[w]) for w in dev_batch_text_list[0]])
+                            wrong_tag_list.append(wrong_label_list)
                             gold_tag_list.append(dev_batch_tag_list[0])
                             pred_tag_list.append(pred_tags)
+
                     assert len(gold_tag_list) == len(pred_tag_list) 
-                    pp, rr, ff, aa = 0., 0., 0., 0.0
-                    for glist, plist in zip(gold_tag_list, pred_tag_list):
+                    # pp, rr, ff, aa = 0., 0., 0., 0.0
+                    right_true, right_false, wrong_true, wrong_false = 0, 0, 0, 0
+                    all_right, all_wrong = 0, 0
+
+                    for glist, plist, wlist in zip(gold_tag_list, pred_tag_list, wrong_tag_list):
                         acc = 0.
-                        for gi, gtag in enumerate(glist):
-                            if gtag == plist[gi]:
-                                acc += 1
-                        ai = acc / (len(plist)+1e-8)
-                        pi = acc / (len(plist)+1e-8)
-                        ri = acc / (len(glist)+1e-8)
-                        fi = 2 * pi * ri / (pi + ri + 1e-8)
-                        aa += ai
-                        pp += pi
-                        rr += ri
-                        ff += fi
+                        correct = gold_tag_list
+                        wrong = wlist
+                        predict = plist
+                        # for gi, gtag in enumerate(glist):
+                        #     if gtag == plist[gi]:
+                        #         acc += 1
 
-                    one_dev_acc = aa / len(gold_tag_list)
-                    one_dev_f1 = ff / len(gold_tag_list)
-                    one_dev_precision = pp / len(gold_tag_list)
-                    one_dev_recall = rr / len(gold_tag_list)
-                    ckpt_fname = directory + '/epoch_%d_dev_f1_%.3f'%(epoch + 1, one_dev_f1)
+                        for c, w, p in zip(glist, wlist, plist):
+                            # Right
+                            if w == c:
+                                if p == c:
+                                    right_true += 1
+                                else:
+                                    right_false += 1
+                            else: # Wrong
+                                if p == c:
+                                    wrong_true += 1
+                                else:
+                                    wrong_false += 1
 
-                    if one_dev_f1 > max_dev_f1:
-                        max_dev_f1 = one_dev_f1
-                        dev_acc_list.append(one_dev_acc)
-                        dev_f1_list.append(one_dev_f1)
-                        dev_precision_list.append(one_dev_precision)
-                        dev_recall_list.append(one_dev_recall)
+                        # ai = acc / (len(plist)+1e-8)
+                        # pi = acc / (len(plist)+1e-8)
+                        # ri = acc / (len(glist)+1e-8)
+                        # fi = 2 * pi * ri / (pi + ri + 1e-8)
+                        # aa += ai
+                        # pp += pi
+                        # rr += ri
+                        # ff += fi
+
+                    # one_dev_acc = aa / len(gold_tag_list)
+                    # one_dev_f1 = ff / len(gold_tag_list)
+                    # one_dev_precision = pp / len(gold_tag_list)
+                    # one_dev_recall = rr / len(gold_tag_list)
+                    all_wrong = wrong_true + wrong_false
+                    recall_wrong = wrong_true + wrong_false
+                    correct_wrong_r = wrong_true / all_wrong
+                    correct_wrong_p = wrong_true / (recall_wrong + right_false)
+                    correct_wrong_f1 = (2 * correct_wrong_r * correct_wrong_p) / (correct_wrong_r + correct_wrong_p + 1e-8)
+                    correct_wrong_acc = right_true + wrong_true / (right_true + wrong_true + right_false + wrong_false + 1e-8)
+                    ckpt_fname = directory + '/epoch_%d_dev_f1_%.3f'%(epoch + 1, correct_wrong_f1)
+
+                    if correct_wrong_f1 > max_dev_f1:
+                        max_dev_f1 = correct_wrong_f1
+                        dev_acc_list.append(correct_wrong_acc)
+                        dev_f1_list.append(correct_wrong_f1)
+                        dev_precision_list.append(correct_wrong_p)
+                        dev_recall_list.append(correct_wrong_r)
                         dev_ckpt_list.append(ckpt_fname)
 
-                        print ('At epoch %d, official dev acc : %f, f1 : %f, precision : %f, recall : %f' % \
-                                (epoch, one_dev_acc, one_dev_f1, one_dev_precision, one_dev_recall))
+                        print ('At epoch %d, official dev f1 : %f, precision : %f, recall : %f' % \
+                                (epoch, correct_wrong_f1, correct_wrong_p, correct_wrong_r))
                         torch.save({'args':args, 'model':model.state_dict(),
                                 'bert_args': bert_args,
                                 'bert_vocab':model.bert_vocab
                                 }, ckpt_fname)
-
                         ###################################
 
                         gold_test_tag_list = []
@@ -400,33 +431,40 @@ if __name__ == "__main__":
                                     o.writelines(test_text + '\t' + test_tag_str + '\n')
                                     gold_test_tag_list.append(test_batch_tag_list[0])
                                     pred_test_tag_list.append(test_pred_tags)
-                                    # print(test_pred_tags)
-                                    # print(gold_test_tag_list)
-                                    # print([id_label_dict[t] for t in test_pred_tags])
-                                    # print([id_label_dict[t] for t in gold_test_tag_list[0]])
-                                    # exit()
-                            assert len(gold_test_tag_list) == len(pred_test_tag_list)
-                            pp, rr, ff, aa = 0., 0., 0., 0.
-                            for glist, plist in zip(gold_tag_list, pred_tag_list):
-                                acc = 0.
-                                for gi, gtag in enumerate(glist):
-                                    if gtag == plist[gi]:
-                                        acc += 1
-                                ai = acc / (len(plist) + 1e-8)
-                                pi = acc / (len(plist) + 1e-8)
-                                ri = acc / (len(glist) + 1e-8)
-                                fi = 2 * pi * ri / (pi + ri + 1e-8)
-                                aa += ai
-                                pp += pi
-                                rr += ri
-                                ff += fi
 
-                            one_test_acc = aa / len(gold_tag_list)
-                            one_test_f1 = ff / len(gold_tag_list)
-                            one_test_precision = pp / len(gold_tag_list)
-                            one_test_recall = rr / len(gold_tag_list)
-                            ckpt_fname = directory + '/epoch_%d_test_f1_%.3f' % (epoch + 1, one_test_f1)
-                            print('At epoch %d, official test acc : %f, f1 : %f, precision : %f, recall : %f' % (epoch, one_test_acc, one_test_f1, one_test_precision, one_test_recall))
+                            assert len(gold_test_tag_list) == len(pred_test_tag_list)
+                            right_true, right_false, wrong_true, wrong_false = 0, 0, 0, 0
+                            all_right, all_wrong = 0, 0
+
+                            for glist, plist, wlist in zip(gold_tag_list, pred_tag_list, wrong_tag_list):
+                                acc = 0.
+                                correct = gold_tag_list
+                                wrong = wlist
+                                predict = plist
+
+                                for c, w, p in zip(glist, wlist, plist):
+                                    # Right
+                                    if w == c:
+                                        if p == c:
+                                            right_true += 1
+                                        else:
+                                            right_false += 1
+                                    else:  # Wrong
+                                        if p == c:
+                                            wrong_true += 1
+                                        else:
+                                            wrong_false += 1
+
+                            all_wrong = wrong_true + wrong_false
+                            recall_wrong = wrong_true + wrong_false
+                            correct_wrong_r = wrong_true / all_wrong
+                            correct_wrong_p = wrong_true / (recall_wrong + right_false)
+                            correct_wrong_f1 = (2 * correct_wrong_r * correct_wrong_p) / (
+                                        correct_wrong_r + correct_wrong_p + 1e-8)
+                            correct_wrong_acc = right_true + wrong_true / (
+                                        right_true + wrong_true + right_false + wrong_false + 1e-8)
+                            ckpt_fname = directory + '/epoch_%d_dev_f1_%.3f' % (epoch + 1, correct_wrong_f1)
+                            print('At epoch %d, official test acc : %f, f1 : %f, precision : %f, recall : %f' % (epoch, correct_wrong_acc, correct_wrong_f1, correct_wrong_p, correct_wrong_r))
 
                 model.train()
 
