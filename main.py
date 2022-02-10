@@ -360,13 +360,17 @@ if __name__ == "__main__":
                             # Right
                             if w == c:
                                 if p == c:
+                                    #TN
                                     right_true += 1
                                 else:
+                                    #FP
                                     right_false += 1
                             else: # Wrong
                                 if p == c:
+                                    #TP
                                     wrong_true += 1
                                 else:
+                                    #FN
                                     wrong_false += 1
 
                         # ai = acc / (len(plist)+1e-8)
@@ -385,7 +389,7 @@ if __name__ == "__main__":
                     all_wrong = wrong_true + wrong_false
                     recall_wrong = wrong_true + wrong_false
                     correct_wrong_r = wrong_true / all_wrong
-                    correct_wrong_p = wrong_true / (recall_wrong + right_false)
+                    correct_wrong_p = wrong_true / (right_false + wrong_true)
                     correct_wrong_f1 = (2 * correct_wrong_r * correct_wrong_p) / (correct_wrong_r + correct_wrong_p + 1e-8)
                     correct_wrong_acc = (right_true + wrong_true) / ( right_true + wrong_true + right_false + wrong_false + 1e-8)
                     # print('############## DEV ##############')
@@ -449,16 +453,21 @@ if __name__ == "__main__":
                                 predict = plist
 
                                 for c, w, p in zip(glist, wlist, plist):
-                                    # Right
+                                    # 原始正確 Right
                                     if w == c:
                                         if p == c:
+                                            # 原始正確 糾正正確
                                             right_true += 1
                                         else:
+                                            # 原始正確 糾正錯誤
                                             right_false += 1
+                                    # 原始錯誤
                                     else:  # Wrong
                                         if p == c:
+                                            # 原始錯誤 糾正正確
                                             wrong_true += 1
                                         else:
+                                            # 原始錯誤 糾正錯誤 未糾正
                                             wrong_false += 1
                             # print('############## TEST ##############')
                             # print([id_label_dict[p] for p in plist])
@@ -467,7 +476,7 @@ if __name__ == "__main__":
                             all_wrong = wrong_true + wrong_false
                             recall_wrong = wrong_true + wrong_false
                             correct_wrong_r = wrong_true / all_wrong
-                            correct_wrong_p = wrong_true / (recall_wrong + right_false)
+                            correct_wrong_p = wrong_true / (right_false + wrong_true)#(recall_wrong + right_false)
                             correct_wrong_f1 = (2 * correct_wrong_r * correct_wrong_p) / (correct_wrong_r + correct_wrong_p + 1e-8)
                             correct_wrong_acc = (right_true + wrong_true) / ( right_true + wrong_true + right_false + wrong_false + 1e-8)
                             # ckpt_fname = directory + '/epoch_%d_dev_f1_%.3f' % (epoch + 1, correct_wrong_f1)
