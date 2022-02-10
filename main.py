@@ -387,12 +387,12 @@ if __name__ == "__main__":
                     correct_wrong_r = wrong_true / all_wrong
                     correct_wrong_p = wrong_true / (recall_wrong + right_false)
                     correct_wrong_f1 = (2 * correct_wrong_r * correct_wrong_p) / (correct_wrong_r + correct_wrong_p + 1e-8)
-                    # correct_wrong_acc = right_true + wrong_true / (right_true + wrong_true + right_false + wrong_false + 1e-8)
+                    correct_wrong_acc = right_true + wrong_true / (right_true + wrong_true + right_false + wrong_false + 1e-8)
                     # print('############## DEV ##############')
                     # print([id_label_dict[p] for p in plist])
                     # print([id_label_dict[p] for p in wlist])
                     # print([id_label_dict[p] for p in glist])
-                    print('At epoch %d, official dev f1 : %.4f, precision : %.4f, recall : %.4f' % (epoch, correct_wrong_f1, correct_wrong_p, correct_wrong_r))
+                    print('At epoch %d, official dev acc : %.4f, f1 : %.4f, precision : %.4f, recall : %.4f' % (epoch, correct_wrong_acc, correct_wrong_f1, correct_wrong_p, correct_wrong_r))
 
                     if correct_wrong_f1 > max_dev_f1:
                         ckpt_fname = directory + '/epoch_%d_dev_f1_%.3f' % (epoch + 1, correct_wrong_f1)
@@ -417,8 +417,6 @@ if __name__ == "__main__":
                             with open(test_eval_path%epoch, 'w', encoding='utf8') as o:
                                 for test_step in range(test_step_num):
                                     test_batch_text_list, test_batch_tag_list = nerdata.get_next_batch(batch_size=1, mode='test')
-                                    print(test_batch_text_list)
-                                    print(test_batch_tag_list)
                                     test_tag_matrix = process_batch_tag(test_batch_tag_list, nerdata.label_dict)
                                     test_mask_matrix = make_mask(test_batch_tag_list)
                                     test_batch_result, _, _, _, test_input_data = model(test_batch_text_list, test_mask_matrix, test_tag_matrix, fine_tune=False)
@@ -471,9 +469,9 @@ if __name__ == "__main__":
                             correct_wrong_r = wrong_true / all_wrong
                             correct_wrong_p = wrong_true / (recall_wrong + right_false)
                             correct_wrong_f1 = (2 * correct_wrong_r * correct_wrong_p) / (correct_wrong_r + correct_wrong_p + 1e-8)
-                            # correct_wrong_acc = right_true + wrong_true / ( right_true + wrong_true + right_false + wrong_false + 1e-8)
+                            correct_wrong_acc = right_true + wrong_true / ( right_true + wrong_true + right_false + wrong_false + 1e-8)
                             # ckpt_fname = directory + '/epoch_%d_dev_f1_%.3f' % (epoch + 1, correct_wrong_f1)
-                            print('At epoch %d, official test f1 : %.4f, precision : %.4f, recall : %.4f' % (epoch, correct_wrong_f1, correct_wrong_p, correct_wrong_r))
+                            print('At epoch %d, official test acc: %.4f, f1 : %.4f, precision : %.4f, recall : %.4f' % (epoch, correct_wrong_acc, correct_wrong_f1, correct_wrong_p, correct_wrong_r))
                 model.train()
 
 
