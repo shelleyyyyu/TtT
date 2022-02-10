@@ -12,13 +12,13 @@ python -u main.py \
     --train_data $dpath/train.txt \
     --dev_data $dpath/test.txt\
     --test_data $dpath/test.txt\
-    --batch_size 100 \
+    --batch_size 10 \
     --lr 1e-5 \
     --dropout 0.1 \
-    --number_epoch 1000 \
+    --number_epoch 10 \
     --gpu_id 0 \
-    --print_every 50 \
-    --save_every 500 \
+    --print_every 1 \
+    --save_every 1 \
     --fine_tune \
     --loss_type FC_FT_CRF\
     --gamma $gamma \

@@ -387,7 +387,7 @@ if __name__ == "__main__":
                     correct_wrong_r = wrong_true / all_wrong
                     correct_wrong_p = wrong_true / (recall_wrong + right_false)
                     correct_wrong_f1 = (2 * correct_wrong_r * correct_wrong_p) / (correct_wrong_r + correct_wrong_p + 1e-8)
-                    correct_wrong_acc = right_true + wrong_true / (right_true + wrong_true + right_false + wrong_false + 1e-8)
+                    correct_wrong_acc = (right_true + wrong_true) / ( right_true + wrong_true + right_false + wrong_false + 1e-8)
                     # print('############## DEV ##############')
                     # print([id_label_dict[p] for p in plist])
                     # print([id_label_dict[p] for p in wlist])
@@ -469,7 +469,7 @@ if __name__ == "__main__":
                             correct_wrong_r = wrong_true / all_wrong
                             correct_wrong_p = wrong_true / (recall_wrong + right_false)
                             correct_wrong_f1 = (2 * correct_wrong_r * correct_wrong_p) / (correct_wrong_r + correct_wrong_p + 1e-8)
-                            correct_wrong_acc = right_true + wrong_true / ( right_true + wrong_true + right_false + wrong_false + 1e-8)
+                            correct_wrong_acc = (right_true + wrong_true) / ( right_true + wrong_true + right_false + wrong_false + 1e-8)
                             # ckpt_fname = directory + '/epoch_%d_dev_f1_%.3f' % (epoch + 1, correct_wrong_f1)
                             print('At epoch %d, official test acc: %.4f, f1 : %.4f, precision : %.4f, recall : %.4f' % (epoch, correct_wrong_acc, correct_wrong_f1, correct_wrong_p, correct_wrong_r))
                 model.train()
