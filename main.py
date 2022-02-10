@@ -397,7 +397,7 @@ if __name__ == "__main__":
                     if correct_wrong_f1 > max_dev_f1:
                         ckpt_fname = directory + '/epoch_%d_dev_f1_%.3f' % (epoch + 1, correct_wrong_f1)
                         max_dev_f1 = correct_wrong_f1
-                        #dev_acc_list.append(correct_wrong_acc)
+                        dev_acc_list.append(correct_wrong_acc)
                         dev_f1_list.append(correct_wrong_f1)
                         dev_precision_list.append(correct_wrong_p)
                         dev_recall_list.append(correct_wrong_r)
