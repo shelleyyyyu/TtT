@@ -260,7 +260,7 @@ if __name__ == "__main__":
         loss_ft_accumulated = 0.
 
         model.train()
-        print ('-------------------------------------------')
+        # print ('-------------------------------------------')
         if epoch % 5 == 0:
             print ('%d epochs have run' % epoch)
         else:
