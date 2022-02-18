@@ -205,10 +205,6 @@ if __name__ == "__main__":
                 all_right, all_wrong = 0, 0
                 print(len(gold_tag_list), len(pred_tag_list), len(wrong_tag_list))
                 for glist, plist, wlist in zip(gold_tag_list, pred_tag_list, wrong_tag_list):
-                    acc = 0.
-                    correct = gold_tag_list
-                    wrong = wlist
-                    predict = plist
 
                     for c, w, p in zip(glist, wlist, plist):
                         # Right
@@ -227,6 +223,8 @@ if __name__ == "__main__":
                                 # FN
                                 wrong_false += 1
 
+                print(wrong_true, wrong_false, right_false, right_true)
+                print(wrong_true + wrong_false + right_false + right_true)
                 all_wrong = wrong_true + wrong_false
                 recall_wrong = wrong_true + wrong_false
                 correct_wrong_r = wrong_true / all_wrong

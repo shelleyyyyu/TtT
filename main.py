@@ -348,10 +348,14 @@ if __name__ == "__main__":
                     all_right, all_wrong = 0, 0
 
                     for glist, plist, wlist in zip(gold_tag_list, pred_tag_list, wrong_tag_list):
-                        acc = 0.
-                        correct = gold_tag_list
-                        wrong = wlist
-                        predict = plist
+                        # acc = 0.
+                        # correct = glist
+                        # wrong = wlist
+                        # predict = plist
+                        # print(correct)
+                        # print(wrong)
+                        # print(predict)
+                        # exit()
                         # for gi, gtag in enumerate(glist):
                         #     if gtag == plist[gi]:
                         #         acc += 1
@@ -447,10 +451,6 @@ if __name__ == "__main__":
                             all_right, all_wrong = 0, 0
 
                             for glist, plist, wlist in zip(gold_test_tag_list, pred_test_tag_list, wrong_test_tag_list):
-                                acc = 0.
-                                correct = gold_tag_list
-                                wrong = wlist
-                                predict = plist
 
                                 for c, w, p in zip(glist, wlist, plist):
                                     # 原始正確 Right
@@ -469,10 +469,7 @@ if __name__ == "__main__":
                                         else:
                                             # 原始錯誤 糾正錯誤 未糾正
                                             wrong_false += 1
-                            # print('############## TEST ##############')
-                            # print([id_label_dict[p] for p in plist])
-                            # print([id_label_dict[p] for p in wlist])
-                            # print([id_label_dict[p] for p in glist])
+
                             all_wrong = wrong_true + wrong_false
                             recall_wrong = wrong_true + wrong_false
                             correct_wrong_r = wrong_true / all_wrong
