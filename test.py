@@ -66,21 +66,34 @@ def join_str(in_list):
         out_str += str(token) + ''
     return out_str.strip()
 
-def predict_one_text_split(text_split_list, seq_tagging_model, label_dict):
+def predict_one_text_split(text_split_list, seq_tagging_model, id_label_dict, label_id_dict):
     # text_split_list is a list of tokens ['word1', 'word2', ...]
     text_list = [text_split_list]
+    #label_list = [[label_id_dict[text] for text in text_split_list]]
     tag_matrix, mask_matrix = get_tag_mask_matrix(text_list)
+    decode_result, _, _, _, input_data = seq_tagging_model(text_list, mask_matrix, tag_matrix, fine_tune = False)
+    dev_text = ''
+    for token in text_list[0]:
+        dev_text += token + ' '
+    dev_text = dev_text.strip()
 
-
-    decode_result, _, _, _ = seq_tagging_model(text_list, mask_matrix, tag_matrix, fine_tune = False)
+    valid_dev_text_len = len(text_list[0])
+    dev_tag_str = ''
+    pred_tags = []
+    for tag in decode_result[0][1:valid_dev_text_len + 1]:
+        dev_tag_str += id_label_dict[int(tag)] + ' '
+        pred_tags.append(int(tag))
+    dev_tag_str = dev_tag_str.strip()
+    out_line = dev_text + '\t' + dev_tag_str
+    o.writelines(out_line + '\n')
     valid_text_len = len(text_split_list)
     
     valid_decode_result = decode_result[0][1: valid_text_len + 1]
 
     tag_result = []
     for token in valid_decode_result:
-        tag_result.append(label_dict[int(token)])
-    return tag_result
+        tag_result.append(id_label_dict[int(token)])
+    return tag_result, input_data[1:].t()[0].tolist(), pred_tags
     #return valid_decode_result
 
 def get_text_split_list(text, max_len):
@@ -103,17 +116,20 @@ def get_text_split_list(text, max_len):
             pass
     return result_list
 
-def predict_one_text(text, max_len, seq_tagging_model, label_dict):
+def predict_one_text(text, gold, max_len, seq_tagging_model, id_label_dict, label_id_dict):
     text_split_list = get_text_split_list(text, max_len)
+    gold_split_list = get_text_split_list(gold, max_len)
+
     all_text_result = []
     all_decode_result = []
-    for one_text_list in text_split_list:
-        one_decode_result = predict_one_text_split(one_text_list, seq_tagging_model, label_dict)
-        all_text_result.extend(one_text_list)
+    for idx in range(len(text_split_list)):
+        one_decode_result, wrong, predict = predict_one_text_split(text_split_list[idx], seq_tagging_model, id_label_dict, label_id_dict)
+        gold = [label_id_dict[t] for t in gold_split_list[idx]]
+        all_text_result.extend(text_split_list[idx])
         all_decode_result.extend(one_decode_result)
     result_text = join_str(all_text_result)
     tag_predict_result = join_str(all_decode_result)
-    return tag_predict_result
+    return tag_predict_result, wrong, gold, predict
 
 def get_label_dict(label_path):
     label_dict = {}
@@ -146,19 +162,27 @@ if __name__ == "__main__":
     print("loading..")
     bert_args, model_args, bert_vocab, model_parameters = extract_parameters(ckpt_path)
     
-    label_dict = {}
+    id_label_dict = {}
+    label_id_dict = {}
     for lid, label in enumerate(bert_vocab._idx2token):
-        label_dict[lid] = label
+        id_label_dict[lid] = label
+        label_id_dict[label] = lid
     
-    model_args.number_class = len(label_dict)
+    model_args.number_class = len(id_label_dict)
 
     empty_bert_model = init_empty_bert_model(bert_args, bert_vocab, gpu_id)
     seq_tagging_model = init_sequence_tagging_model(empty_bert_model, model_args, 
         bert_args, gpu_id, bert_vocab, model_parameters)
-    seq_tagging_model.cuda(gpu_id)
+    if torch.cuda.is_available():
+        seq_tagging_model.cuda(gpu_id)
 
     print("eval...")
     seq_tagging_model.eval()
+
+    wrong_tag_list = []
+    gold_tag_list = []
+    pred_tag_list = []
+
     with torch.no_grad():
         with open(out_path, 'w', encoding = 'utf8') as o:
             with open(test_data, 'r', encoding = 'utf8') as i:
@@ -168,8 +192,45 @@ if __name__ == "__main__":
                     content_list = l.strip().split('\t')
                     text = content_list[0]
                     gold = content_list[1]
-                    res = predict_one_text(text, max_len, seq_tagging_model, label_dict)
+                    res, wrong_id_list, gold_id_list, predict_id_list = predict_one_text(text, gold, max_len, seq_tagging_model, id_label_dict, label_id_dict)
                     res = res.replace(SEP, '').strip()
                     o.writelines(text + "\t" + res + "\t" + gold + "\n")
+                    wrong_tag_list.append(wrong_id_list)
+                    gold_tag_list.append(gold_id_list)
+                    pred_tag_list.append(predict_id_list)
 
-                print(mstime()-start)
+                # Evaluation
+                right_true, right_false, wrong_true, wrong_false = 0, 0, 0, 0
+                all_right, all_wrong = 0, 0
+
+                for glist, plist, wlist in zip(gold_tag_list, pred_tag_list, wrong_tag_list):
+                    acc = 0.
+                    correct = gold_tag_list
+                    wrong = wlist
+                    predict = plist
+
+                    for c, w, p in zip(glist, wlist, plist):
+                        # Right
+                        if w == c:
+                            if p == c:
+                                # TN
+                                right_true += 1
+                            else:
+                                # FP
+                                right_false += 1
+                        else:  # Wrong
+                            if p == c:
+                                # TP
+                                wrong_true += 1
+                            else:
+                                # FN
+                                wrong_false += 1
+
+                all_wrong = wrong_true + wrong_false
+                recall_wrong = wrong_true + wrong_false
+                correct_wrong_r = wrong_true / all_wrong
+                correct_wrong_p = wrong_true / (right_false + wrong_true)
+                correct_wrong_f1 = (2 * correct_wrong_r * correct_wrong_p) / (correct_wrong_r + correct_wrong_p + 1e-8)
+                correct_wrong_acc = (right_true + wrong_true) / (right_true + wrong_true + right_false + wrong_false + 1e-8)
+                print('Test acc : %.4f, f1 : %.4f, precision : %.4f, recall : %.4f' % (correct_wrong_acc, correct_wrong_f1, correct_wrong_p, correct_wrong_r))
+

@@ -120,11 +120,11 @@ class myModel(nn.Module):
         if torch.cuda.is_available():
             sequence_representation = sequence_representation.cuda(self.device) # [seq_len, batch_size, embedding_size]
         # dropout
-        sequence_representation = F.dropout(sequence_representation, p=self.dropout, training=self.training)
-        sequence_representation = sequence_representation.view(current_batch_size * seq_len, self.embedding_size)
-        sequence_emissions = self.fc(sequence_representation)
-        sequence_emissions = sequence_emissions.view(seq_len, current_batch_size, self.num_class)
-        
+        sequence_representation = F.dropout(sequence_representation, p=self.dropout, training=self.training) # [seq_len, batch_size, embedding_size]
+        sequence_representation = sequence_representation.view(current_batch_size * seq_len, self.embedding_size) # [seq_len * batch_size, embedding_size]
+        sequence_emissions = self.fc(sequence_representation) # [seq_len * batch_size, num_class]; num_class: 所有token in vocab
+        sequence_emissions = sequence_emissions.view(seq_len, current_batch_size, self.num_class) # [seq_len, batch_size, num_class]; num_class: 所有token in vocab
+
         # bert finetune loss
         probs = torch.softmax(sequence_emissions, -1)
         if "FC" in self.loss_type:

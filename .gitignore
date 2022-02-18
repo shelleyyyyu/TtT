@@ -4,3 +4,5 @@
 /model*/*
 /sequence_*/*
 ckpt
+output
+GEC_ckpt
