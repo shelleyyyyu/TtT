@@ -124,7 +124,8 @@ def predict_one_text(text, gold, max_len, seq_tagging_model, id_label_dict, labe
     all_decode_result = []
     for idx in range(len(text_split_list)):
         one_decode_result, wrong, predict = predict_one_text_split(text_split_list[idx], seq_tagging_model, id_label_dict, label_id_dict)
-        gold = [label_id_dict[t] for t in gold_split_list[idx]]
+        # print(bert_vocab)
+        gold = [bert_vocab.token2idx(token) for token in gold_split_list[idx]]
         all_text_result.extend(text_split_list[idx])
         all_decode_result.extend(one_decode_result)
     result_text = join_str(all_text_result)
