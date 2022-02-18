@@ -203,7 +203,7 @@ if __name__ == "__main__":
                 # Evaluation
                 right_true, right_false, wrong_true, wrong_false = 0, 0, 0, 0
                 all_right, all_wrong = 0, 0
-
+                print(len(gold_tag_list), len(pred_tag_list), len(wrong_tag_list))
                 for glist, plist, wlist in zip(gold_tag_list, pred_tag_list, wrong_tag_list):
                     acc = 0.
                     correct = gold_tag_list
