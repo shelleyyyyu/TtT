@@ -4,7 +4,7 @@ import torch
 import argparse
 sys.path.append('..')
 from bert import BERTLM
-from data import SEP, MASK
+from data import Vocab, SEP, MASK
 from main import myModel
 import numpy as np
 
@@ -20,9 +20,19 @@ def extract_parameters(ckpt_path):
     return bert_args, model_args, bert_vocab, model_parameters
 
 def init_empty_bert_model(bert_args, bert_vocab, gpu_id):
+    # bert_model = BERTLM(gpu_id, bert_vocab, bert_args.embed_dim, bert_args.ff_embed_dim, bert_args.num_heads, \
+    #         bert_args.dropout, bert_args.layers, bert_args.approx)
+    # return bert_model
+    bert_ckpt= torch.load(args.bert_path)
+    bert_args = bert_ckpt['args']
+    bert_vocab = Vocab(bert_vocab, min_occur_cnt=bert_args.min_occur_cnt, specials=[CLS, SEP, MASK])
     bert_model = BERTLM(gpu_id, bert_vocab, bert_args.embed_dim, bert_args.ff_embed_dim, bert_args.num_heads, \
-            bert_args.dropout, bert_args.layers, bert_args.approx)
-    return bert_model
+        bert_args.dropout, bert_args.layers, bert_args.approx)
+    bert_model.load_state_dict(bert_ckpt['model'])
+    if torch.cuda.is_available():
+        bert_model = bert_model.cuda(gpu_id)
+    return bert_model, bert_vocab, bert_args
+
 
 def init_sequence_tagging_model(empty_bert_model, args, bert_args, gpu_id, bert_vocab, model_parameters):
     number_class = args.number_class
@@ -172,8 +182,8 @@ if __name__ == "__main__":
     model_args.number_class = len(id_label_dict)
 
     empty_bert_model = init_empty_bert_model(bert_args, bert_vocab, gpu_id)
-    seq_tagging_model = init_sequence_tagging_model(empty_bert_model, model_args, 
-        bert_args, gpu_id, bert_vocab, model_parameters)
+    seq_tagging_model = init_sequence_tagging_model(empty_bert_model, model_args, bert_args, gpu_id, bert_vocab, model_parameters)
+
     if torch.cuda.is_available():
         seq_tagging_model.cuda(gpu_id)
 
@@ -204,8 +214,8 @@ if __name__ == "__main__":
                 right_true, right_false, wrong_true, wrong_false = 0, 0, 0, 0
                 all_right, all_wrong = 0, 0
                 print(len(gold_tag_list), len(pred_tag_list), len(wrong_tag_list))
-                for glist, plist, wlist in zip(gold_tag_list, pred_tag_list, wrong_tag_list):
 
+                for glist, plist, wlist in zip(gold_tag_list, pred_tag_list, wrong_tag_list):
                     for c, w, p in zip(glist, wlist, plist):
                         # Right
                         if w == c:
