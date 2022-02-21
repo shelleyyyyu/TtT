@@ -4,7 +4,7 @@ import torch
 import argparse
 sys.path.append('..')
 from bert import BERTLM
-from data import Vocab, SEP, MASK
+from data import Vocab, SEP, MASK, CLS
 from main import myModel
 import numpy as np
 
@@ -20,18 +20,20 @@ def extract_parameters(ckpt_path):
     return bert_args, model_args, bert_vocab, model_parameters
 
 def init_empty_bert_model(bert_args, bert_vocab, gpu_id):
-    # bert_model = BERTLM(gpu_id, bert_vocab, bert_args.embed_dim, bert_args.ff_embed_dim, bert_args.num_heads, \
-    #         bert_args.dropout, bert_args.layers, bert_args.approx)
-    # return bert_model
-    bert_ckpt= torch.load(args.bert_path)
-    bert_args = bert_ckpt['args']
-    bert_vocab = Vocab(bert_vocab, min_occur_cnt=bert_args.min_occur_cnt, specials=[CLS, SEP, MASK])
+    bert_ckpt = torch.load('./model/bert/bert.ckpt')
     bert_model = BERTLM(gpu_id, bert_vocab, bert_args.embed_dim, bert_args.ff_embed_dim, bert_args.num_heads, \
-        bert_args.dropout, bert_args.layers, bert_args.approx)
+            bert_args.dropout, bert_args.layers, bert_args.approx)
     bert_model.load_state_dict(bert_ckpt['model'])
-    if torch.cuda.is_available():
-        bert_model = bert_model.cuda(gpu_id)
-    return bert_model, bert_vocab, bert_args
+    return bert_model
+    # bert_ckpt= torch.load(args.bert_path)
+    # bert_args = bert_ckpt['args']
+    # bert_vocab = Vocab(bert_vocab, min_occur_cnt=bert_args.min_occur_cnt, specials=[CLS, SEP, MASK])
+    # bert_model = BERTLM(gpu_id, bert_vocab, bert_args.embed_dim, bert_args.ff_embed_dim, bert_args.num_heads, \
+    #     bert_args.dropout, bert_args.layers, bert_args.approx)
+    # bert_model.load_state_dict(bert_ckpt['model'])
+    # if torch.cuda.is_available():
+    #     bert_model = bert_model.cuda(gpu_id)
+    # return bert_model, bert_vocab, bert_args
 
 
 def init_sequence_tagging_model(empty_bert_model, args, bert_args, gpu_id, bert_vocab, model_parameters):
@@ -42,9 +44,9 @@ def init_sequence_tagging_model(empty_bert_model, args, bert_args, gpu_id, bert_
     device = gpu_id
     vocab = bert_vocab
     loss_type = args.loss_type
-    seq_tagging_model = myModel(empty_bert_model, number_class, embedding_size, batch_size, dropout, 
-        device, vocab, loss_type)
+    seq_tagging_model = myModel(empty_bert_model, number_class, embedding_size, batch_size, dropout, device, vocab, loss_type)
     seq_tagging_model.load_state_dict(model_parameters)
+    print(model_parameters)
     return seq_tagging_model
 
 def get_tag_mask_matrix(batch_text_list):
@@ -85,19 +87,11 @@ def predict_one_text_split(text_split_list, seq_tagging_model, id_label_dict, la
     dev_text = ''
     for token in text_list[0]:
         dev_text += token + ' '
-    dev_text = dev_text.strip()
-
     valid_dev_text_len = len(text_list[0])
-    dev_tag_str = ''
     pred_tags = []
     for tag in decode_result[0][1:valid_dev_text_len + 1]:
-        dev_tag_str += id_label_dict[int(tag)] + ' '
         pred_tags.append(int(tag))
-    dev_tag_str = dev_tag_str.strip()
-    out_line = dev_text + '\t' + dev_tag_str
-    o.writelines(out_line + '\n')
     valid_text_len = len(text_split_list)
-    
     valid_decode_result = decode_result[0][1: valid_text_len + 1]
 
     tag_result = []
@@ -130,15 +124,15 @@ def predict_one_text(text, gold, max_len, seq_tagging_model, id_label_dict, labe
     text_split_list = get_text_split_list(text, max_len)
     gold_split_list = get_text_split_list(gold, max_len)
 
-    all_text_result = []
+    #all_text_result = []
     all_decode_result = []
     for idx in range(len(text_split_list)):
         one_decode_result, wrong, predict = predict_one_text_split(text_split_list[idx], seq_tagging_model, id_label_dict, label_id_dict)
         # print(bert_vocab)
         gold = [bert_vocab.token2idx(token) for token in gold_split_list[idx]]
-        all_text_result.extend(text_split_list[idx])
+        #all_text_result.extend(text_split_list[idx])
         all_decode_result.extend(one_decode_result)
-    result_text = join_str(all_text_result)
+    # result_text = join_str(all_text_result)
     tag_predict_result = join_str(all_decode_result)
     return tag_predict_result, wrong, gold, predict
 
@@ -169,7 +163,7 @@ if __name__ == "__main__":
     out_path = args.out_path
     gpu_id = args.gpu_id
     max_len = args.max_len
-   
+
     print("loading..")
     bert_args, model_args, bert_vocab, model_parameters = extract_parameters(ckpt_path)
     
@@ -178,11 +172,13 @@ if __name__ == "__main__":
     for lid, label in enumerate(bert_vocab._idx2token):
         id_label_dict[lid] = label
         label_id_dict[label] = lid
+    print(label_id_dict[CLS])
     
     model_args.number_class = len(id_label_dict)
 
     empty_bert_model = init_empty_bert_model(bert_args, bert_vocab, gpu_id)
     seq_tagging_model = init_sequence_tagging_model(empty_bert_model, model_args, bert_args, gpu_id, bert_vocab, model_parameters)
+    optimizer = torch.optim.Adam(seq_tagging_model.parameters(), args.lr)
 
     if torch.cuda.is_available():
         seq_tagging_model.cuda(gpu_id)
@@ -236,10 +232,10 @@ if __name__ == "__main__":
                 print(wrong_true, wrong_false, right_false, right_true)
                 print(wrong_true + wrong_false + right_false + right_true)
                 all_wrong = wrong_true + wrong_false
-                recall_wrong = wrong_true + wrong_false
-                correct_wrong_r = wrong_true / all_wrong
-                correct_wrong_p = wrong_true / (right_false + wrong_true)
-                correct_wrong_f1 = (2 * correct_wrong_r * correct_wrong_p) / (correct_wrong_r + correct_wrong_p + 1e-8)
-                correct_wrong_acc = (right_true + wrong_true) / (right_true + wrong_true + right_false + wrong_false + 1e-8)
-                print('Test acc : %.4f, f1 : %.4f, precision : %.4f, recall : %.4f' % (correct_wrong_acc, correct_wrong_f1, correct_wrong_p, correct_wrong_r))
+                print(all_wrong)
+                r = wrong_true / all_wrong
+                p = wrong_true / (right_false + wrong_true)
+                f1 = (2 * r * p) / (r + p)
+                acc = (right_true + wrong_true) / (right_true + wrong_true + right_false + wrong_false)
+                print('Test acc : %.4f, f1 : %.4f, precision : %.4f, recall : %.4f' % (acc, f1, p, r))
 
