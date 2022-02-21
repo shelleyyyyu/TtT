@@ -178,7 +178,7 @@ if __name__ == "__main__":
 
     empty_bert_model = init_empty_bert_model(bert_args, bert_vocab, gpu_id)
     seq_tagging_model = init_sequence_tagging_model(empty_bert_model, model_args, bert_args, gpu_id, bert_vocab, model_parameters)
-    optimizer = torch.optim.Adam(seq_tagging_model.parameters(), args.lr)
+    #optimizer = torch.optim.Adam(seq_tagging_model.parameters(), args.lr)
 
     if torch.cuda.is_available():
         seq_tagging_model.cuda(gpu_id)
