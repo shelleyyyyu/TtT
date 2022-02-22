@@ -7,6 +7,7 @@ from bert import BERTLM
 from data import Vocab, SEP, MASK, CLS
 from main import myModel
 import numpy as np
+from funcs import process_batch_tag
 
 import time
 mstime = lambda: int(round(time.time() * 1000))    
@@ -44,10 +45,9 @@ def init_sequence_tagging_model(empty_bert_model, args, bert_args, gpu_id, bert_
     device = gpu_id
     vocab = bert_vocab
     loss_type = args.loss_type
-    seq_tagging_model = myModel(empty_bert_model, number_class, embedding_size, batch_size, dropout, device, vocab, loss_type)
-    seq_tagging_model.load_state_dict(model_parameters)
-    print(model_parameters)
-    return seq_tagging_model
+    model = myModel(empty_bert_model, number_class, embedding_size, batch_size, dropout, device, vocab, loss_type)
+    model.load_state_dict(model_parameters)
+    return model
 
 def get_tag_mask_matrix(batch_text_list):
     tag_matrix = []
@@ -58,7 +58,6 @@ def get_tag_mask_matrix(batch_text_list):
         max_len = max(len(instance), max_len)
     max_len += 1 # 1 for [CLS]
     for i in range(batch_size):
-        one_text_list = batch_text_list[i]
         one_tag = list(np.zeros(max_len).astype(int))
         tag_matrix.append(one_tag)
         one_mask = [1]
@@ -78,12 +77,24 @@ def join_str(in_list):
         out_str += str(token) + ''
     return out_str.strip()
 
-def predict_one_text_split(text_split_list, seq_tagging_model, id_label_dict, label_id_dict):
+def predict_one_text_split(text_split_list, seq_tagging_model, id_label_dict, label_id_dict, bert_vocab):
     # text_split_list is a list of tokens ['word1', 'word2', ...]
     text_list = [text_split_list]
+    # text_list = [['我', '的', '家', '是', '在', '您', '的', '工', '厂', '附', '近', '，', '最', '近', '您', '的', '工', '厂', '得', '噪', '音', '和', '臭', '味', '都', '让', '这', '里', '的', '人', '民', '真', '受', '不', '了', '。', '<-MASK->', '<-SEP->']]
+    tag_list = [[bert_vocab.token2idx(w) for w in text] for text in text_list]
     #label_list = [[label_id_dict[text] for text in text_split_list]]
-    tag_matrix, mask_matrix = get_tag_mask_matrix(text_list)
-    decode_result, _, _, _, input_data = seq_tagging_model(text_list, mask_matrix, tag_matrix, fine_tune = False)
+    tag_matrix = process_batch_tag(tag_list, bert_vocab)
+    _, mask_matrix = get_tag_mask_matrix(text_list)
+    # print(text_list)
+    # print(tag_list)
+    # print(tag_matrix)
+    # print(mask_matrix)
+    # print(len(tag_list[0]))
+    # print(len(text_list[0]))
+    # print(len(tag_matrix[0]))
+    # print(len(mask_matrix[0]))
+    # exit()
+    decode_result, _, _, _, input_data = seq_tagging_model(text_list, mask_matrix, tag_matrix, fine_tune=False)
     dev_text = ''
     for token in text_list[0]:
         dev_text += token + ' '
@@ -120,14 +131,14 @@ def get_text_split_list(text, max_len):
             pass
     return result_list
 
-def predict_one_text(text, gold, max_len, seq_tagging_model, id_label_dict, label_id_dict):
+def predict_one_text(text, gold, max_len, seq_tagging_model, id_label_dict, label_id_dict, bert_vocab):
     text_split_list = get_text_split_list(text, max_len)
     gold_split_list = get_text_split_list(gold, max_len)
 
     #all_text_result = []
     all_decode_result = []
     for idx in range(len(text_split_list)):
-        one_decode_result, wrong, predict = predict_one_text_split(text_split_list[idx], seq_tagging_model, id_label_dict, label_id_dict)
+        one_decode_result, wrong, predict = predict_one_text_split(text_split_list[idx], seq_tagging_model, id_label_dict, label_id_dict, bert_vocab)
         # print(bert_vocab)
         gold = [bert_vocab.token2idx(token) for token in gold_split_list[idx]]
         #all_text_result.extend(text_split_list[idx])
@@ -199,7 +210,7 @@ if __name__ == "__main__":
                     content_list = l.strip().split('\t')
                     text = content_list[0]
                     gold = content_list[1]
-                    res, wrong_id_list, gold_id_list, predict_id_list = predict_one_text(text, gold, max_len, seq_tagging_model, id_label_dict, label_id_dict)
+                    res, wrong_id_list, gold_id_list, predict_id_list = predict_one_text(text, gold, max_len, seq_tagging_model, id_label_dict, label_id_dict, bert_vocab)
                     res = res.replace(SEP, '').strip()
                     o.writelines(text + "\t" + res + "\t" + gold + "\n")
                     wrong_tag_list.append(wrong_id_list)

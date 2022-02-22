@@ -21,7 +21,6 @@ def extract_parameters(ckpt_path):
     model_parameters = model_ckpt['model']
     return bert_args, model_args, bert_vocab, model_parameters
 
-
 def init_bert_model(args, device, bert_vocab):
     bert_ckpt= torch.load(args.bert_path)
     bert_args = bert_ckpt['args']
@@ -42,7 +41,7 @@ def ListsToTensor(xs, vocab):
     mx_len = max(lens)
     ys = []
     for i, x in enumerate(xs):
-        y =  vocab.token2idx([CLS]+x) + ([vocab.padding_idx]*(mx_len - lens[i]))
+        y = vocab.token2idx([CLS]+x) + ([vocab.padding_idx]*(mx_len - lens[i]))
         ys.append(y)
 
     data = torch.LongTensor(ys).t_().contiguous()
@@ -214,7 +213,6 @@ if __name__ == "__main__":
     
     batch_size = args.batch_size
     number_class = len(id_label_dict) #args.number_class
-    print(number_class)
     embedding_size = bert_args.embed_dim
     fine_tune = args.fine_tune
     loss_type = args.loss_type
@@ -227,7 +225,6 @@ if __name__ == "__main__":
 
     # Data Preparation
     train_path, dev_path, test_path = args.train_data, args.dev_data, args.test_data
-    #label_path = args.label_data
     train_max_len = args.training_max_len
     nerdata = DataLoader(train_path, dev_path, test_path, bert_vocab, train_max_len)
     print ('data is ready')
@@ -403,7 +400,8 @@ if __name__ == "__main__":
                     print('At epoch %d, official dev acc : %.4f, f1 : %.4f, precision : %.4f, recall : %.4f' % (epoch, correct_wrong_acc, correct_wrong_f1, correct_wrong_p, correct_wrong_r))
 
                     if correct_wrong_f1 > max_dev_f1:
-                        ckpt_fname = directory + '/epoch_%d_dev_f1_%.3f' % (epoch + 1, correct_wrong_f1)
+                        model.eval()
+                        ckpt_fname = directory + '/epoch_%d_dev_f1_%.3f' % (epoch, correct_wrong_f1)
                         max_dev_f1 = correct_wrong_f1
                         dev_acc_list.append(correct_wrong_acc)
                         dev_f1_list.append(correct_wrong_f1)
@@ -411,11 +409,11 @@ if __name__ == "__main__":
                         dev_recall_list.append(correct_wrong_r)
                         dev_ckpt_list.append(ckpt_fname)
 
-                        torch.save({'args':args,
-                                    'model':model.state_dict(),
+                        torch.save({'args': args,
+                                    'model': model.state_dict(),
                                     'bert_args': bert_args,
-                                    'bert_vocab':model.bert_vocab
-                                    }, ckpt_fname)
+                                    'bert_vocab': model.bert_vocab
+                                    }, ckpt_fname, save_weights_only=False)
                         ###################################
 
                         gold_test_tag_list = []
