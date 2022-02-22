@@ -413,7 +413,7 @@ if __name__ == "__main__":
                                     'model': model.state_dict(),
                                     'bert_args': bert_args,
                                     'bert_vocab': model.bert_vocab
-                                    }, ckpt_fname, save_weights_only=False)
+                                    }, ckpt_fname)
                         ###################################
 
                         gold_test_tag_list = []
