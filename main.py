@@ -35,6 +35,11 @@ def init_bert_model(args, device, bert_vocab):
             p.requires_grad=False
     return bert_model, bert_vocab, bert_args
 
+def init_empty_bert_model(bert_args, bert_vocab, gpu_id):
+    bert_model = BERTLM(gpu_id, bert_vocab, bert_args.embed_dim, bert_args.ff_embed_dim, bert_args.num_heads, \
+            bert_args.dropout, bert_args.layers, bert_args.approx)
+    return bert_model
+
 def ListsToTensor(xs, vocab):
     batch_size = len(xs)
     lens = [ len(x)+2 for x in xs]
@@ -189,6 +194,7 @@ def parse_config():
     parser.add_argument('--final_eval_path', type=str)
     parser.add_argument('--l2_lambda', type=float)
     parser.add_argument('--training_max_len', type=int)
+    parser.add_argument('--restore_ckpt_path', type=str, default=None)
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -203,32 +209,52 @@ if __name__ == "__main__":
 
     # myModel construction
     print ('Initializing model...')
-    bert_model, bert_vocab, bert_args = init_bert_model(args, args.gpu_id, args.bert_vocab)
-    
-    id_label_dict = {}#get_id_label_dict(bert_vocab)
-    label_id_dict = {}
-    for lid, label in enumerate(bert_vocab._idx2token):
-        id_label_dict[lid] = label
-        label_id_dict[label] = lid
-    
-    batch_size = args.batch_size
-    number_class = len(id_label_dict) #args.number_class
-    embedding_size = bert_args.embed_dim
-    fine_tune = args.fine_tune
-    loss_type = args.loss_type
-    l2_lambda = args.l2_lambda
-    model = myModel(bert_model, number_class, embedding_size, batch_size, args.dropout, args.gpu_id, bert_vocab, loss_type)
-    if torch.cuda.is_available():
-        model = model.cuda(args.gpu_id)
 
-    print ('Model construction finished.')
+    if args.restore_ckpt_path:
+        bert_args, model_args, bert_vocab, model_parameters = extract_parameters(args.restore_ckpt_path)
+        bert_model = init_empty_bert_model(bert_args, bert_vocab, args.gpu_id)
+        id_label_dict = {}
+        label_id_dict = {}
+        for lid, label in enumerate(bert_vocab._idx2token):
+            id_label_dict[lid] = label
+            label_id_dict[label] = lid
+
+        batch_size = args.batch_size
+        number_class = len(id_label_dict)  # args.number_class
+        embedding_size = bert_args.embed_dim
+        fine_tune = args.fine_tune
+        loss_type = args.loss_type
+        l2_lambda = args.l2_lambda
+        model = myModel(bert_model, number_class, embedding_size, batch_size, args.dropout, args.gpu_id, bert_vocab,
+                        loss_type)
+        model.load_state_dict(model_parameters)
+        if torch.cuda.is_available():
+            model = model.cuda(args.gpu_id)
+    else:
+        bert_model, bert_vocab, bert_args = init_bert_model(args, args.gpu_id, args.bert_vocab)
+        id_label_dict = {}  # get_id_label_dict(bert_vocab)
+        label_id_dict = {}
+        for lid, label in enumerate(bert_vocab._idx2token):
+            id_label_dict[lid] = label
+            label_id_dict[label] = lid
+        batch_size = args.batch_size
+        number_class = len(id_label_dict)  # args.number_class
+        embedding_size = bert_args.embed_dim
+        fine_tune = args.fine_tune
+        loss_type = args.loss_type
+        l2_lambda = args.l2_lambda
+        model = myModel(bert_model, number_class, embedding_size, batch_size, args.dropout, args.gpu_id, bert_vocab,
+                        loss_type)
+        if torch.cuda.is_available():
+            model = model.cuda(args.gpu_id)
+        print('Model construction finished.')
+    
 
     # Data Preparation
     train_path, dev_path, test_path = args.train_data, args.dev_data, args.test_data
     train_max_len = args.training_max_len
     nerdata = DataLoader(train_path, dev_path, test_path, bert_vocab, train_max_len)
     print ('data is ready')
-
 
     optimizer = torch.optim.Adam(model.parameters(), args.lr)
 
@@ -414,7 +440,6 @@ if __name__ == "__main__":
                                     'bert_args': bert_args,
                                     'bert_vocab': model.bert_vocab
                                     }, ckpt_fname)
-                        ###################################
 
                         gold_test_tag_list = []
                         pred_test_tag_list = []
@@ -477,6 +502,7 @@ if __name__ == "__main__":
                             # ckpt_fname = directory + '/epoch_%d_dev_f1_%.3f' % (epoch + 1, correct_wrong_f1)
                             print('At epoch %d, official test acc: %.4f, f1 : %.4f, precision : %.4f, recall : %.4f' % (epoch, correct_wrong_acc, correct_wrong_f1, correct_wrong_p, correct_wrong_r))
                 model.train()
+
 
 
     max_dev_f1_idx = np.argmax(dev_f1_list)
