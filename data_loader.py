@@ -165,8 +165,6 @@ class DataLoader:
 
     def process_one_line_nlpcc(self, line):
         content_list = line.strip().split('\t')
-        if len(content_list) != 2:
-            continue
         assert len(content_list) == 2
         text_list = [w for w in content_list[0].strip()] #+ ['<-SEP->']
         tag_name_list = [w for w in content_list[1].strip()] + ['<-SEP->']
