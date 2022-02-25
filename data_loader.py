@@ -109,7 +109,7 @@ class DataLoader:
             for l in lines:
                 if 'OCR' in in_path:
                     one_text, one_tag = self.process_one_line_ocr(l)
-                elif 'NLPCC' in in_path or 'CGED' in in_path:
+                elif 'NLPCC' in in_path or 'CGED' in in_path or 'zh_merge_data' in in_path:
                     one_text, one_tag = self.process_one_line_nlpcc(l)
                 else:
                     one_text, one_tag = self.process_one_line(l)

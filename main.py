@@ -316,8 +316,8 @@ if __name__ == "__main__":
             
             # update
             loss_accumulated += train_loss.item()
-            loss_crf_accumulated  += loss_crf
-            loss_ft_accumulated  += loss_ft
+            loss_crf_accumulated += loss_crf
+            loss_ft_accumulated += loss_ft
             
             train_loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)

@@ -217,7 +217,7 @@ if __name__ == "__main__":
 
     bert_args, model_args, bert_vocab, model_parameters = extract_parameters(args.restore_ckpt_path)
     bert_model = init_empty_bert_model(bert_args, bert_vocab, args.gpu_id)
-    #bert_model, bert_vocab, bert_args = init_bert_model(args, args.gpu_id, args.bert_vocab)
+    # bert_model, bert_vocab, bert_args = init_bert_model(args, args.gpu_id, args.bert_vocab)
 
     id_label_dict = {}
     label_id_dict = {}
