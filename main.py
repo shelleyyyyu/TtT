@@ -194,7 +194,7 @@ def parse_config():
     parser.add_argument('--final_eval_path', type=str)
     parser.add_argument('--l2_lambda', type=float)
     parser.add_argument('--training_max_len', type=int)
-    parser.add_argument('--restore_ckpt_path', type=str, default=None)
+    parser.add_argument('--start_from', type=str, default=None)
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -210,8 +210,8 @@ if __name__ == "__main__":
     # myModel construction
     print ('Initializing model...')
 
-    if args.restore_ckpt_path:
-        bert_args, model_args, bert_vocab, model_parameters = extract_parameters(args.restore_ckpt_path)
+    if args.start_from:
+        bert_args, model_args, bert_vocab, model_parameters = extract_parameters(args.start_from)
         bert_model = init_empty_bert_model(bert_args, bert_vocab, args.gpu_id)
         id_label_dict = {}
         label_id_dict = {}
