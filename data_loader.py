@@ -112,6 +112,8 @@ class DataLoader:
                 elif 'NLPCC' in in_path or 'CGED' in in_path or 'zh_merge_data' in in_path:
                     if '-NONE-' in l:
                         l = l.replace('-NONE-', '')
+                    if len(l.split('\t')) != 2:
+                        continue
                     one_text, one_tag = self.process_one_line_nlpcc(l)
                 else:
                     one_text, one_tag = self.process_one_line(l)
