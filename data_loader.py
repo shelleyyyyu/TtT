@@ -107,7 +107,11 @@ class DataLoader:
         with open(in_path, 'r', encoding = 'utf8') as i:
             lines = i.readlines()
             for l in lines:
-                if 'OCR' in in_path:
+                if 'augment' in in_path:
+                    if len(l.split('\t')) != 2:
+                        continue
+                    one_text, one_tag = self.process_one_line_nlpcc(l)
+                elif 'OCR' in in_path:
                     one_text, one_tag = self.process_one_line_ocr(l)
                 elif 'NLPCC' in in_path or 'CGED' in in_path or 'zh_merge_data' in in_path:
                     if '-NONE-' in l:
