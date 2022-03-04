@@ -11,7 +11,10 @@ import numpy as np
 from data_loader import DataLoader
 from crf_layer import DynamicCRF
 import os
+import math
 from funcs import *
+from transformers import BertTokenizer, GPT2LMHeadModel, TextGenerationPipeline
+
 
 
 def extract_parameters(ckpt_path):
@@ -204,6 +207,8 @@ def parse_config():
     parser.add_argument('--l2_lambda', type=float)
     parser.add_argument('--training_max_len', type=int)
     parser.add_argument('--restore_ckpt_path', type=str)
+    parser.add_argument('--augment_data_file', type=str)
+    parser.add_argument('--reverse', action='store_true')
     return parser.parse_args()
 
 def init_empty_bert_model(bert_args, bert_vocab, gpu_id):
@@ -211,9 +216,20 @@ def init_empty_bert_model(bert_args, bert_vocab, gpu_id):
             bert_args.dropout, bert_args.layers, bert_args.approx)
     return bert_model
 
+def calculatePerplexity(sentence, model, tokenizer):
+    input_ids = torch.tensor(tokenizer.encode(sentence)).unsqueeze(0)
+    input_ids = input_ids.to('cpu')
+    with torch.no_grad():
+        outputs = model(input_ids, labels=input_ids)
+    loss, logits = outputs[:2]
+    return math.exp(loss)
+
+
 if __name__ == "__main__":
     args = parse_config()
     print('Initializing model...')
+
+    SPECIAL_TOKEN = ['<-PAD->', '<-UNK->', '<-CLS->', '<-SEP->', '<-MASK->', '<-NUM->', '<-NOT_CHINESE->']
 
     bert_args, model_args, bert_vocab, model_parameters = extract_parameters(args.restore_ckpt_path)
     bert_model = init_empty_bert_model(bert_args, bert_vocab, args.gpu_id)
@@ -243,10 +259,20 @@ if __name__ == "__main__":
     train_path, test_path, test_path = args.train_data, args.test_data, args.test_data
     # label_path = args.label_data
     train_max_len = args.training_max_len
-    nerdata = DataLoader(train_path, test_path, test_path, bert_vocab, train_max_len)
+    nerdata = DataLoader(train_path, test_path, test_path, bert_vocab, train_max_len, reverse=args.reverse)
     print('data is ready')
 
     optimizer = torch.optim.Adam(model.parameters(), args.lr)
+
+    # GPT-2 Model
+    # gpt2tokenizer = GPT2Tokenizer.from_pretrained('gpt-model')
+    # gpt2config = GPT2Config.from_pretrained('gpt-model')
+    # gpt2model = GPT2LMHeadModel.from_pretrained('gpt-model', config=gpt2config)
+    # gpt2model.eval()
+
+    gpt2tokenizer = BertTokenizer.from_pretrained("uer/gpt2-chinese-couplet")
+    gpt2model = GPT2LMHeadModel.from_pretrained("uer/gpt2-chinese-couplet")
+    gpt2model.eval()
 
     # --- training part ---#
     num_epochs = args.number_epoch
@@ -255,65 +281,64 @@ if __name__ == "__main__":
     test_eval_path = args.test_eval_path
 
     model.eval()
-    gold_tag_list = []
-    wrong_tag_list = []
-    pred_tag_list = []
+    gec_pairs = []
     with torch.no_grad():
         with open(test_eval_path, 'w', encoding='utf8') as o:
             for test_step in range(test_data_num):
                 test_batch_text_list, test_batch_tag_list = nerdata.get_next_batch(batch_size=1, mode='test')
+                ground_truth_batch_tag_list = test_batch_tag_list
                 test_tag_matrix = process_batch_tag(test_batch_tag_list, nerdata.label_dict)
                 test_mask_matrix = make_mask(test_batch_tag_list)
+                # for i in range(10):
+                    # [['下', '个', '星', '期', '，', '我', '跟', '我', '朋', '唷', '打', '算', '去', '法', '国', '玩', '儿', '。',
+                    #   '<-MASK->', '<-SEP->']]
+                    # [[53, 20, 383, 182, 7, 21, 462, 21, 488, 210, 195, 524, 103, 146, 56, 491, 278, 9, 5, 5]]
+                    # [[4  53  20 383 182   7  21 462  21 488 210 195 524 103 146  56 491 278
+                    #   9   5   5]]
+                    # [[4  53  20 383 182   7  21 462  21 488 210 195 524 103 146  56 491 278
+                    #   9   5   5]]
+                    # if i != 0:
+                    #     test_batch_text_list = predict_tag_str.split(' ')
+                    #     test_batch_tag_list = [[label_id_dict[w] for w in test_batch_text_list]]
+                    #     test_batch_text_list = [test_batch_text_list]
+                    #     test_tag_matrix = process_batch_tag(test_batch_tag_list, nerdata.label_dict)
+                    #     test_mask_matrix = make_mask(test_batch_tag_list)
                 test_batch_result, _, _, _, test_input_data = model(test_batch_text_list, test_mask_matrix, test_tag_matrix, fine_tune=False)
 
-                test_text = ''
+                input_text = ''
                 for token in test_batch_text_list[0]:
-                    test_text += token + ' '
-                test_text = test_text.strip()
+                    input_text += token + ' '
+                input_text = input_text.strip()
 
-                valid_test_text_len = len(test_batch_text_list[0])
-                test_tag_str = ''
-                pred_tags = []
-                for tag in test_batch_result[0][1:valid_test_text_len + 1]:
-                    test_tag_str += id_label_dict[int(tag)] + ' '
-                    pred_tags.append(int(tag))
-                test_tag_str = test_tag_str.strip()
-                out_line = test_text + '\t' + test_tag_str
-                o.writelines(out_line + '\n')
-                wrong_tag_list.append(test_input_data[1:].t()[0].tolist())
-                gold_tag_list.append(test_batch_tag_list[0])
-                pred_tag_list.append(pred_tags)
-            # print(len(gold_tag_list))
-            # print(len(pred_tag_list))
-            # print(len(wrong_tag_list))
-            # print(gold_tag_list[0])
-            # print(pred_tag_list[0])
-            # print(wrong_tag_list[0])
-            # print([id_label_dict[w] for w in gold_tag_list[0]])
-            # print([id_label_dict[w] for w in pred_tag_list[0]])
-            # print([id_label_dict[w] for w in wrong_tag_list[0]])
-            # exit()
-            assert len(gold_tag_list) == len(pred_tag_list)
-            right_true, right_false, wrong_true, wrong_false = 0, 0, 0, 0
-            all_right, all_wrong = 0, 0
+                target_text = ''
+                for token in ground_truth_batch_tag_list[0]:
+                    target_text += id_label_dict[token] + ' '
+                target_text = target_text.strip()
 
-            for glist, plist, wlist in zip(gold_tag_list, pred_tag_list, wrong_tag_list):
-                for c, w, p in zip(glist, wlist, plist):
-                    if w == c:
-                        if p == c:
-                            right_true += 1
-                        else:
-                            right_false += 1
-                    else:
-                        if p == c:
-                            wrong_true += 1
-                        else:
-                            wrong_false += 1
+                test_text_len = len(test_batch_text_list[0])
+                predict_tag_str = ''
+                for tag in test_batch_result[0][1:test_text_len + 1]:
+                    predict_tag_str += id_label_dict[int(tag)] + ' '
+                predict_tag_str = predict_tag_str.strip()
 
-            all_wrong = wrong_true + wrong_false
-            recall_wrong = wrong_true + wrong_false
-            recall = wrong_true / all_wrong
-            precision = wrong_true / (right_false + wrong_true)
-            f1 = (2 * recall * precision) / (recall + precision + 1e-8)
-            acc = (right_true + wrong_true) / (right_true + wrong_true + right_false + wrong_false + 1e-8)
-            print('Official test acc : %.4f, f1 : %.4f, precision : %.4f, recall : %.4f' % (acc, f1, precision, recall))
+                wrong_sent = ''.join([w for w in list(input_text.split(' '))if w not in SPECIAL_TOKEN])
+                predicted_wrong_sent = ''.join([w for w in list(predict_tag_str.split(' '))if w not in SPECIAL_TOKEN])
+                correct_sent = ''.join([w for w in list(target_text.split(' '))if w not in SPECIAL_TOKEN])
+                #print(wrong_sent)
+                origin_ppl = calculatePerplexity(wrong_sent, gpt2model, gpt2tokenizer)
+                #print(predicted_wrong_sent)
+                predicted_ppl = calculatePerplexity(predicted_wrong_sent, gpt2model, gpt2tokenizer)
+                #print(correct_sent)
+                correct_ppl = calculatePerplexity(correct_sent, gpt2model, gpt2tokenizer)
+                #print('-'*10)
+                # print(wrong_sent, origin_ppl)
+                # print(predicted_wrong_sent, predicted_ppl)
+                # print(correct_sent, correct_ppl)
+                # print('-' * 10)
+                # if predicted_ppl < origin_ppl and correct_ppl < predicted_ppl:
+                if correct_ppl < predicted_ppl:
+                    gec_pairs.append([predicted_wrong_sent, correct_sent])
+
+    with open (args.augment_data_file, 'w', encoding='utf-8') as w_file:
+        for pair in gec_pairs:
+            w_file.write('\t'.join(pair)+'\n')

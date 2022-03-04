@@ -1,14 +1,14 @@
 import numpy as np
 
 class DataLoader:
-    def __init__(self, train_path, dev_path, test_path, label_dict, train_max_len):
+    def __init__(self, train_path, dev_path, test_path, label_dict, train_max_len, reverse=False):
+        self.reverse = reverse
         self.train_path, self.dev_path, self.test_path = train_path, dev_path, test_path
         self.label_dict = label_dict
         self.train_max_len = train_max_len
         self.train_text_list, self.train_tag_list = self.process_file(train_path)
         self.dev_text_list, self.dev_tag_list = self.process_file(dev_path)
         self.test_text_list, self.test_tag_list = self.process_file(test_path)
-        
         
         self.train_num = len(self.train_text_list)
         self.dev_num = len(self.dev_text_list)
@@ -36,6 +36,7 @@ class DataLoader:
             max_test_seq_len = max(len(item), max_test_seq_len)
         print ('Maximum train sequence length: %d, dev sequence length: %d, test sequence length: %d' % \
             (max_train_seq_len, max_dev_seq_len, max_test_seq_len))
+
         
     def get_next_batch(self, batch_size, mode):
         batch_text_list, batch_tag_list = [], []
@@ -107,20 +108,36 @@ class DataLoader:
         with open(in_path, 'r', encoding = 'utf8') as i:
             lines = i.readlines()
             for l in lines:
-                if 'augment' in in_path:
-                    if len(l.split('\t')) != 2:
-                        continue
-                    one_text, one_tag = self.process_one_line_nlpcc(l)
-                elif 'OCR' in in_path:
-                    one_text, one_tag = self.process_one_line_ocr(l)
-                elif 'NLPCC' in in_path or 'CGED' in in_path or 'zh_merge_data' in in_path or 'zh_full_merge_data' in in_path:
-                    if '-NONE-' in l:
-                        l = l.replace('-NONE-', '')
-                    if len(l.split('\t')) != 2:
-                        continue
-                    one_text, one_tag = self.process_one_line_nlpcc(l)
+                if self.reverse==True:
+                    # if 'augment' in in_path:
+                    #     if len(l.split('\t')) != 2:
+                    #         continue
+                    #     one_text, one_tag = self.process_one_line_nlpcc(l)
+                    if 'OCR' in in_path:
+                        one_text, one_tag = self.process_reverse_one_line_ocr(l)
+                    elif 'NLPCC' in in_path or 'CGED' in in_path or 'zh_merge_data' in in_path or 'zh_full_merge_data' in in_path:
+                        if '-NONE-' in l:
+                            l = l.replace('-NONE-', '')
+                        if len(l.split('\t')) != 2:
+                            continue
+                        one_text, one_tag = self.process_reverse_one_line_nlpcc(l)
+                    else:
+                        one_text, one_tag = self.process_reverse_one_line(l)
                 else:
-                    one_text, one_tag = self.process_one_line(l)
+                    # if 'augment' in in_path:
+                    #     if len(l.split('\t')) != 2:
+                    #         continue
+                    #     one_text, one_tag = self.process_one_line_nlpcc(l)
+                    if 'OCR' in in_path:
+                        one_text, one_tag = self.process_one_line_ocr(l)
+                    elif 'NLPCC' in in_path or 'CGED' in in_path or 'zh_merge_data' in in_path or 'zh_full_merge_data' in in_path:
+                        if '-NONE-' in l:
+                            l = l.replace('-NONE-', '')
+                        if len(l.split('\t')) != 2:
+                            continue
+                        one_text, one_tag = self.process_one_line_nlpcc(l)
+                    else:
+                        one_text, one_tag = self.process_one_line(l)
                 if len(one_text) > self.train_max_len: # 限制训练过程中序列的最大长度
                     continue
                 else:
@@ -176,6 +193,70 @@ class DataLoader:
         assert len(content_list) == 2
         text_list = [w for w in content_list[0].strip()] #+ ['<-SEP->']
         tag_name_list = [w for w in content_list[1].strip()] + ['<-SEP->']
+        if len(tag_name_list) > len(text_list):
+            text_list += ['<-MASK->'] * (len(tag_name_list) - len(text_list))
+            text_list += ['<-SEP->']
+            tag_name_list += ['<-SEP->']
+        elif len(tag_name_list) < len(text_list):
+            tag_name_list += ['<-SEP->'] + ['<-PAD->'] * (len(text_list) - len(tag_name_list))
+            text_list += ['<-SEP->']
+        else:
+            tag_name_list += ['<-SEP->']
+            text_list += ['<-SEP->']
+        assert len(text_list) == len(tag_name_list)
+        tag_list = list()
+        for token in tag_name_list:
+            tag_list.append(self.label_dict.token2idx(token))
+        return text_list, tag_list
+
+
+    def process_reverse_one_line(self, line):
+        content_list = line.strip().split('\t')
+        assert len(content_list) == 3
+        text_list = [w for w in content_list[1].strip()] #+ ['<-SEP->']
+        tag_name_list = [w for w in content_list[0].strip()] + ['<-SEP->']
+        if len(tag_name_list) > len(text_list):
+            text_list += ['<-MASK->'] * (len(tag_name_list) - len(text_list))
+            text_list += ['<-SEP->']
+            tag_name_list += ['<-SEP->']
+        elif len(tag_name_list) < len(text_list):
+            tag_name_list += ['<-SEP->'] + ['<-PAD->'] * (len(text_list) - len(tag_name_list))
+            text_list += ['<-SEP->']
+        else:
+            tag_name_list += ['<-SEP->']
+            text_list += ['<-SEP->']
+        assert len(text_list) == len(tag_name_list)
+        tag_list = list()
+        for token in tag_name_list:
+            tag_list.append(self.label_dict.token2idx(token))
+        return text_list, tag_list
+
+    def process_reverse_one_line_ocr(self, line):
+        content_list = line.strip().split('\t')
+        assert len(content_list) == 3
+        text_list = [w for w in content_list[2].strip()] #+ ['<-SEP->']
+        tag_name_list = [w for w in content_list[1].strip()] + ['<-SEP->']
+        if len(tag_name_list) > len(text_list):
+            text_list += ['<-MASK->'] * (len(tag_name_list) - len(text_list))
+            text_list += ['<-SEP->']
+            tag_name_list += ['<-SEP->']
+        elif len(tag_name_list) < len(text_list):
+            tag_name_list += ['<-SEP->'] + ['<-PAD->'] * (len(text_list) - len(tag_name_list))
+            text_list += ['<-SEP->']
+        else:
+            tag_name_list += ['<-SEP->']
+            text_list += ['<-SEP->']
+        assert len(text_list) == len(tag_name_list)
+        tag_list = list()
+        for token in tag_name_list:
+            tag_list.append(self.label_dict.token2idx(token))
+        return text_list, tag_list
+
+    def process_reverse_one_line_nlpcc(self, line):
+        content_list = line.strip().split('\t')
+        assert len(content_list) == 2
+        text_list = [w for w in content_list[1].strip()] #+ ['<-SEP->']
+        tag_name_list = [w for w in content_list[0].strip()] + ['<-SEP->']
         if len(tag_name_list) > len(text_list):
             text_list += ['<-MASK->'] * (len(tag_name_list) - len(text_list))
             text_list += ['<-SEP->']

@@ -195,6 +195,7 @@ def parse_config():
     parser.add_argument('--l2_lambda', type=float)
     parser.add_argument('--training_max_len', type=int)
     parser.add_argument('--start_from', type=str, default=None)
+    parser.add_argument('--reverse', action='store_true')
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -253,7 +254,7 @@ if __name__ == "__main__":
     # Data Preparation
     train_path, dev_path, test_path = args.train_data, args.dev_data, args.test_data
     train_max_len = args.training_max_len
-    nerdata = DataLoader(train_path, dev_path, test_path, bert_vocab, train_max_len)
+    nerdata = DataLoader(train_path, dev_path, test_path, bert_vocab, train_max_len, reverse=args.reverse)
     print ('data is ready')
 
     optimizer = torch.optim.Adam(model.parameters(), args.lr)

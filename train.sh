@@ -26,5 +26,7 @@ python -u main.py \
     --prediction_max_len 128 \
     --dev_eval_path $cpath/dev_pred.txt \
     --final_eval_path $cpath/dev_eval.txt \
+    --test_eval_path $cpath/test_%d_pred.txt \
     --l2_lambda 1e-5 \
-    --training_max_len 128
+    --training_max_len 128 \
+    --restore_ckpt_path ./ckpt/epoch_483_dev_f1_0.357
