@@ -271,6 +271,12 @@ if __name__ == "__main__":
                     test_text += token + ' '
                 test_text = test_text.strip()
 
+                # GroundTruth
+                ground_text = ''
+                for token in test_batch_tag_list[0]:
+                    ground_text += token + ' '
+                ground_text = ground_text.strip()
+
                 valid_test_text_len = len(test_batch_text_list[0])
                 test_tag_str = ''
                 pred_tags = []
@@ -278,8 +284,10 @@ if __name__ == "__main__":
                     test_tag_str += id_label_dict[int(tag)] + ' '
                     pred_tags.append(int(tag))
                 test_tag_str = test_tag_str.strip()
-                out_line = test_text + '\t' + test_tag_str
-                o.writelines(out_line + '\n')
+
+                # out_line = test_text + '\t' + test_tag_str
+                o.writelines(test_text + '\t' + test_tag_str + '\t' + ground_text + '\n')
+                # o.writelines(out_line + '\n')
                 wrong_tag_list.append(test_input_data[1:].t()[0].tolist())
                 gold_tag_list.append(test_batch_tag_list[0])
                 pred_tag_list.append(pred_tags)
