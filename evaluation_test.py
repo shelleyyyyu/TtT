@@ -274,7 +274,7 @@ if __name__ == "__main__":
                 # GroundTruth
                 ground_text = ''
                 for token in test_batch_tag_list[0]:
-                    ground_text += token + ' '
+                    ground_text += id_label_dict[token] + ' '
                 ground_text = ground_text.strip()
 
                 valid_test_text_len = len(test_batch_text_list[0])
