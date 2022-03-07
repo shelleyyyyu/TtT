@@ -283,16 +283,7 @@ if __name__ == "__main__":
                 wrong_tag_list.append(test_input_data[1:].t()[0].tolist())
                 gold_tag_list.append(test_batch_tag_list[0])
                 pred_tag_list.append(pred_tags)
-            # print(len(gold_tag_list))
-            # print(len(pred_tag_list))
-            # print(len(wrong_tag_list))
-            # print(gold_tag_list[0])
-            # print(pred_tag_list[0])
-            # print(wrong_tag_list[0])
-            # print([id_label_dict[w] for w in gold_tag_list[0]])
-            # print([id_label_dict[w] for w in pred_tag_list[0]])
-            # print([id_label_dict[w] for w in wrong_tag_list[0]])
-            # exit()
+
             assert len(gold_tag_list) == len(pred_tag_list)
             right_true, right_false, wrong_true, wrong_false = 0, 0, 0, 0
             all_right, all_wrong = 0, 0

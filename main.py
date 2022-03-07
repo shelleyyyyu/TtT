@@ -452,11 +452,19 @@ if __name__ == "__main__":
                                     test_mask_matrix = make_mask(test_batch_tag_list)
                                     test_batch_result, _, _, _, test_input_data = model(test_batch_text_list, test_mask_matrix, test_tag_matrix, fine_tune=False)
 
+                                    # Input
                                     test_text = ''
                                     for token in test_batch_text_list[0]:
                                         test_text += token + ' '
                                     test_text = test_text.strip()
 
+                                    # GroundTruth
+                                    ground_text = ''
+                                    for token in test_batch_tag_list[0]:
+                                        ground_text += token + ' '
+                                    ground_text = ground_text.strip()
+
+                                    # Predict
                                     valid_test_text_len = len(test_batch_text_list[0])
                                     test_tag_str = ''
                                     test_pred_tags = []
@@ -464,7 +472,8 @@ if __name__ == "__main__":
                                         test_tag_str += id_label_dict[int(tag)] + ' '
                                         test_pred_tags.append(int(tag))
                                     test_tag_str = test_tag_str.strip()
-                                    o.writelines(test_text + '\t' + test_tag_str + '\n')
+
+                                    o.writelines(test_text + '\t' + test_tag_str + '\t' + ground_text + '\n')
                                     wrong_test_tag_list.append(test_input_data[1:].t()[0].tolist())
                                     gold_test_tag_list.append(test_batch_tag_list[0])
                                     pred_test_tag_list.append(test_pred_tags)
