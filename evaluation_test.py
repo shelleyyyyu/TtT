@@ -310,9 +310,10 @@ if __name__ == "__main__":
                             wrong_false += 1
 
             all_wrong = wrong_true + wrong_false
+            far = right_false / (right_true + right_false)
             recall_wrong = wrong_true + wrong_false
             recall = wrong_true / all_wrong
             precision = wrong_true / (right_false + wrong_true)
             f1 = (2 * recall * precision) / (recall + precision + 1e-8)
             acc = (right_true + wrong_true) / (right_true + wrong_true + right_false + wrong_false + 1e-8)
-            print('Official test acc : %.4f, f1 : %.4f, precision : %.4f, recall : %.4f' % (acc, f1, precision, recall))
+            print('Official test acc : %.4f, f1 : %.4f, precision : %.4f, recall : %.4f, far_wrong : %.4f' % (acc, f1, precision, recall, far))

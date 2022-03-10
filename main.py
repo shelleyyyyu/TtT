@@ -499,7 +499,7 @@ if __name__ == "__main__":
                                             # 原始錯誤 糾正正確
                                             wrong_true += 1
                                         else:
-                                            # 原始錯誤 糾正錯誤 未糾正
+                                            # 原始錯誤 糾正錯誤 // 未糾正
                                             wrong_false += 1
 
                             all_wrong = wrong_true + wrong_false
