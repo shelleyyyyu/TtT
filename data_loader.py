@@ -106,7 +106,7 @@ class DataLoader:
         all_text, all_tag = [], []
         with open(in_path, 'r', encoding = 'utf8') as i:
             lines = i.readlines()
-            for l in lines:
+            for lidx, l in enumerate(lines):
                 if 'augment' in in_path:
                     if len(l.strip().split('\t')) != 2:
                         continue
@@ -129,6 +129,11 @@ class DataLoader:
                     pass
                 all_text.append(one_text)
                 all_tag.append(one_tag)
+                if lidx == 0:
+                    print('-'*5 + 'Data Processing Demo' + '-'*5)
+                    print('Original Sent', l)
+                    print('one_text: ', one_text)
+                    print('one_tag: ', one_tag)
         return all_text, all_tag
     
     def process_one_line(self, line):
