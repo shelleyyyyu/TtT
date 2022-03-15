@@ -134,6 +134,7 @@ class DataLoader:
                     print('Original Sent', l)
                     print('one_text: ', one_text)
                     print('one_tag: ', one_tag)
+        print('Original Data Length: %d, Processed Data Length: %d ' %(len(lines), len(all_text)))
         return all_text, all_tag
     
     def process_one_line(self, line):
