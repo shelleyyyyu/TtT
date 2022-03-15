@@ -112,6 +112,8 @@ class DataLoader:
                         continue
                     one_text, one_tag = self.process_one_line_nlpcc(l)
                 elif 'OCR' in in_path or 'babymom' in in_path or 'pingan' in in_path:
+                    if len(l.strip().split('\t')) != 3:
+                        continue
                     one_text, one_tag = self.process_one_line_ocr(l)
                 elif 'NLPCC' in in_path or 'CGED' in in_path or 'zh_merge_data' in in_path or 'zh_full_merge_data' in in_path:
                     if '-NONE-' in l:
