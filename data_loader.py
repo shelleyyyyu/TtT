@@ -107,7 +107,9 @@ class DataLoader:
         with open(in_path, 'r', encoding = 'utf8') as i:
             lines = i.readlines()
             for lidx, l in enumerate(lines):
-                if 'augment' in in_path:
+                if '-NONE-' in l:
+                    l = l.replace('-NONE-', '|')
+                if 'augment' or 'delete' in in_path:
                     if len(l.strip().split('\t')) != 2:
                         continue
                     one_text, one_tag = self.process_one_line_nlpcc(l)
@@ -116,8 +118,6 @@ class DataLoader:
                         continue
                     one_text, one_tag = self.process_one_line_ocr(l)
                 elif 'NLPCC' in in_path or 'CGED' in in_path or 'zh_merge_data' in in_path or 'zh_full_merge_data' in in_path:
-                    if '-NONE-' in l:
-                        l = l.replace('-NONE-', '')
                     if len(l.split('\t')) != 2:
                         continue
                     one_text, one_tag = self.process_one_line_nlpcc(l)
@@ -182,8 +182,21 @@ class DataLoader:
     def process_one_line_nlpcc(self, line):
         content_list = line.strip().split('\t')
         assert len(content_list) == 2
-        text_list = [w for w in content_list[0].strip()] #+ ['<-SEP->']
-        tag_name_list = [w for w in content_list[1].strip()] + ['<-SEP->']
+        text_list = []
+        for w in content_list[0].strip():
+            if w == '|':
+                text_list += ['<-PAD->']
+            else:
+                text_list += [w]
+        # text_list = [w for w in content_list[0].strip()] #+ ['<-SEP->']
+        tag_name_list = []
+        for w in content_list[1].strip():
+            if w == '|':
+                tag_name_list += ['<-PAD->']
+            else:
+                tag_name_list += [w]
+        tag_name_list += ['<-SEP->']
+        # tag_name_list = [w for w in content_list[1].strip()] + ['<-SEP->']
         if len(tag_name_list) > len(text_list):
             text_list += ['<-MASK->'] * (len(tag_name_list) - len(text_list))
             text_list += ['<-SEP->']

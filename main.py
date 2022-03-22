@@ -415,8 +415,8 @@ if __name__ == "__main__":
                     # one_dev_recall = rr / len(gold_tag_list)
                     all_wrong = wrong_true + wrong_false
                     recall_wrong = wrong_true + wrong_false
-                    correct_wrong_r = wrong_true / all_wrong
-                    correct_wrong_p = wrong_true / (right_false + wrong_true)
+                    correct_wrong_r = wrong_true / (all_wrong + 1e-8)
+                    correct_wrong_p = wrong_true / (right_false + wrong_true + 1e-8)
                     correct_wrong_f1 = (2 * correct_wrong_r * correct_wrong_p) / (correct_wrong_r + correct_wrong_p + 1e-8)
                     correct_wrong_acc = (right_true + wrong_true) / ( right_true + wrong_true + right_false + wrong_false + 1e-8)
                     # print('############## DEV ##############')
@@ -504,8 +504,8 @@ if __name__ == "__main__":
 
                             all_wrong = wrong_true + wrong_false
                             recall_wrong = wrong_true + wrong_false
-                            correct_wrong_r = wrong_true / all_wrong
-                            correct_wrong_p = wrong_true / (right_false + wrong_true)#(recall_wrong + right_false)
+                            correct_wrong_r = wrong_true / (all_wrong + 1e-8)
+                            correct_wrong_p = wrong_true / (right_false + wrong_true + 1e-8)#(recall_wrong + right_false)
                             correct_wrong_f1 = (2 * correct_wrong_r * correct_wrong_p) / (correct_wrong_r + correct_wrong_p + 1e-8)
                             correct_wrong_acc = (right_true + wrong_true) / ( right_true + wrong_true + right_false + wrong_false + 1e-8)
                             # ckpt_fname = directory + '/epoch_%d_dev_f1_%.3f' % (epoch + 1, correct_wrong_f1)
