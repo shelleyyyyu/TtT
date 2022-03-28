@@ -4,7 +4,7 @@ import numpy as np
 import re
 from google_bert import create_instances_from_document
 
-PAD, UNK, CLS, SEP, MASK, NUM, NOT_CHINESE = '<-PAD->', '<-UNK->', '<-CLS->', '<-SEP->', '<-MASK->', '<-NUM->', '<-NOT_CHINESE->'
+PAD, UNK, CLS, SEP, MASK, NUM, NOT_CHINESE, DELETE, APPEND, KEEP, REPLACE = '<-PAD->', '<-UNK->', '<-CLS->', '<-SEP->', '<-MASK->', '<-NUM->', '<-NOT_CHINESE->', '$DELETE', '$APPEND', '$KEEP', '$REPLACE'
 BUFSIZE = 40960000
 
 def ListsToTensor(xs, vocab=None):
@@ -135,6 +135,10 @@ class Vocab(object):
         self._unk_idx = self._token2idx[UNK]
         self._num_idx = self._token2idx[NUM]
         self._no_chinese_idx = self._token2idx[NOT_CHINESE]
+        self._delete_idx = self._token2idx[DELETE]
+        self._append_idx = self._token2idx[APPEND]
+        self._keep_idx = self._token2idx[KEEP]
+        self._replace_idx = self._token2idx[REPLACE]
 
     @property
     def size(self):
@@ -156,6 +160,22 @@ class Vocab(object):
     def no_chinese_idx(self):
         return self._no_chinese_idx
 
+    @property
+    def delete_idx(self):
+        return self._delete_idx
+
+    @property
+    def keep_idx(self):
+        return self._keep_idx
+
+    @property
+    def append_idx(self):
+        return self._append_idx
+
+    @property
+    def replace_idx(self):
+        return self._replace_idx
+
     def random_token(self):
         return self.idx2token(1 + np.random.randint(self.size-1))
 
@@ -169,6 +189,14 @@ class Vocab(object):
             return [self.token2idx(i) for i in x]
         if x in self._token2idx:
             return self._token2idx[x]
+        if x == '$DELETE':
+            return self.delete_idx
+        if x == '$APPEND':
+            return self.append_idx
+        if x == '$KEEP':
+            return self.keep_idx
+        if x == '$REPLACE':
+            return self.replace_idx
         if self.num_re.match(x) is not None:
             return self.num_idx
         if _has_non_chinese_char(x):

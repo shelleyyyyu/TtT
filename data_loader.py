@@ -1,11 +1,17 @@
 import numpy as np
+import json
 
 class DataLoader:
     def __init__(self, train_path, dev_path, test_path, label_dict, train_max_len):
         self.train_path, self.dev_path, self.test_path = train_path, dev_path, test_path
         self.label_dict = label_dict
+        self.train_action_tag_list = None
+
         self.train_max_len = train_max_len
-        self.train_text_list, self.train_tag_list = self.process_file(train_path)
+        if '_with_tag_info' in self.train_path:
+            self.train_text_list, self.train_tag_list, self.train_action_tag_list = self.process_file_with_tags(train_path)
+        else:
+            self.train_text_list, self.train_tag_list = self.process_file(train_path)
         self.dev_text_list, self.dev_tag_list = self.process_file(dev_path)
         self.test_text_list, self.test_tag_list = self.process_file(test_path)
         
@@ -38,13 +44,15 @@ class DataLoader:
             (max_train_seq_len, max_dev_seq_len, max_test_seq_len))
         
     def get_next_batch(self, batch_size, mode):
-        batch_text_list, batch_tag_list = [], []
+        batch_text_list, batch_tag_list, batch_action_tag_list = [], [], []
         if mode == 'train':
             if self.train_current_idx + batch_size < self.train_num:
                 for i in range(batch_size):
                     curr_idx = self.train_current_idx + i
                     batch_text_list.append(self.train_text_list[self.train_idx_list[curr_idx]])
                     batch_tag_list.append(self.train_tag_list[self.train_idx_list[curr_idx]])
+                    if self.train_action_tag_list:
+                        batch_action_tag_list.append(self.train_action_tag_list[self.train_idx_list[curr_idx]])
                 self.train_current_idx += batch_size
             else:
                 for i in range(batch_size):
@@ -57,6 +65,8 @@ class DataLoader:
                         pass
                     batch_text_list.append(self.train_text_list[self.train_idx_list[curr_idx]])
                     batch_tag_list.append(self.train_tag_list[self.train_idx_list[curr_idx]])
+                    if self.train_action_tag_list:
+                        batch_action_tag_list.append(self.train_action_tag_list[self.train_idx_list[curr_idx]])
                 self.train_current_idx = 0
         elif mode == 'dev':
             if self.dev_current_idx + batch_size < self.dev_num:
@@ -97,7 +107,7 @@ class DataLoader:
         else:
             raise Exception('Wrong batch mode!!!')
 
-        return batch_text_list, batch_tag_list
+        return batch_text_list, batch_tag_list, batch_action_tag_list
         
     def shuffle_train_idx(self):
         np.random.shuffle(self.train_idx_list)
@@ -108,6 +118,7 @@ class DataLoader:
             lines = i.readlines()
             for lidx, l in enumerate(lines):
                 if '-NONE-' in l:
+                    # Only Testing
                     l = l.replace('-NONE-', '|')
                 if 'augment' or 'delete' in in_path:
                     if len(l.strip().split('\t')) != 2:
@@ -131,9 +142,11 @@ class DataLoader:
                 all_tag.append(one_tag)
                 if lidx == 0:
                     print('-'*5 + 'Data Processing Demo' + '-'*5)
-                    print('Original Sent', l)
+                    print('Origin Wrong', l.strip().split('\t')[0])
+                    print('Origin Correct', l.strip().split('\t')[1])
                     print('one_text: ', one_text)
                     print('one_tag: ', one_tag)
+                    print('one_tag: ', [self.label_dict._idx2token[tag] for tag in one_tag])
         print('Original Data Length: %d, Processed Data Length: %d ' %(len(lines), len(all_text)))
         return all_text, all_tag
     
@@ -185,14 +198,14 @@ class DataLoader:
         text_list = []
         for w in content_list[0].strip():
             if w == '|':
-                text_list += ['<-PAD->']
+                text_list += ['<-DELETE->']
             else:
                 text_list += [w]
         # text_list = [w for w in content_list[0].strip()] #+ ['<-SEP->']
         tag_name_list = []
         for w in content_list[1].strip():
             if w == '|':
-                tag_name_list += ['<-PAD->']
+                tag_name_list += ['<-DELETE->']
             else:
                 tag_name_list += [w]
         tag_name_list += ['<-SEP->']
@@ -212,3 +225,86 @@ class DataLoader:
         for token in tag_name_list:
             tag_list.append(self.label_dict.token2idx(token))
         return text_list, tag_list
+
+    def process_file_with_tags(self, in_path):
+        all_text, all_tag, all_action_tag = [], [], []
+        with open(in_path, 'r', encoding = 'utf8') as i:
+            lines = i.readlines()
+            for lidx, l in enumerate(lines):
+                one_text, one_tag, one_action_tag = self.process_one_line_with_tag(l)
+                if len(one_text) > self.train_max_len: # 限制训练过程中序列的最大长度
+                    continue
+                else:
+                    pass
+                all_text.append(one_text)
+                all_tag.append(one_tag)
+                all_action_tag.append(one_action_tag)
+                if lidx == 0:
+                    print('-'*5 + 'Data Processing Demo' + '-'*5)
+                    print('Origin', l.strip().split('\t')[0])
+                    print('one_text: ', one_text)
+                    print('one_tag: ', [self.label_dict._idx2token[tag] for tag in one_tag])
+                    print('one_action_tag', [self.label_dict._idx2token[tag] for tag in one_action_tag])
+        print('Original Data Length: %d, Processed Data Length: %d ' %(len(lines), len(all_text)))
+        return all_text, all_tag, all_action_tag
+
+    # {'source': '我在家里一个人学习中文。', 'target': '我在家里自学中文。', 'tagged_info': [{'我': '$KEEP'}, {'在': '$KEEP'}, {'家': '$KEEP'}, {'里': '$KEEP'}, {'一': '$DELETE'}, {'个': '$DELETE'}, {'人': '$REPLACE_自'}, {'学': '$KEEP'}, {'习': '$DELETE'}, {'中': '$KEEP'}, {'文': '$KEEP'}, {'。': '$KEEP'}]}
+    def process_one_line_with_tag(self, line):
+        content_list = line.strip()
+        # print(content_list)
+        content_dict = eval(content_list)
+        # print(content_dict)
+        source_sent = content_dict['source']
+        target_sent = content_dict['target']
+        action_tag_info = [str(list(info.values())[0]) for info in content_dict['tagged_info'] if str(list(info.keys())[0]) != '' and str(list(info.keys())[0]) != ' ' and str(list(info.keys())[0])]
+        # print(source_sent)
+        # print(target_sent)
+        # print(action_tag_info)
+        text_list = [w for w in source_sent.strip()] #+ ['<-SEP->']
+        action_list = [w.split('_')[0] for w in action_tag_info] #+ ['<-SEP->']
+        tag_name_list = [w for w in target_sent.strip()] + ['<-SEP->']
+
+        # print(len(text_list))
+        # print(len(tag_name_list))
+        # print(len(action_list))
+
+        if len(tag_name_list) > len(text_list):
+            text_list_length = len(text_list)
+            action_list_length = len(action_list)
+            text_list += ['<-MASK->'] * (len(tag_name_list) - text_list_length)
+            text_list += ['<-SEP->']
+            action_list += ['<-MASK->'] * (len(tag_name_list) - action_list_length)
+            action_list += ['<-SEP->']
+            tag_name_list += ['<-SEP->']
+        elif len(tag_name_list) < len(text_list):
+            tag_name_list += ['<-SEP->'] + ['<-PAD->'] * (len(text_list) - len(tag_name_list))
+            text_list += ['<-SEP->']
+            action_list += ['<-SEP->']
+        else:
+            tag_name_list += ['<-SEP->']
+            text_list += ['<-SEP->']
+            action_list += ['<-SEP->']
+
+        # print((text_list))
+        # print(len(text_list))
+        # print((tag_name_list))
+        # print(len(tag_name_list))
+        # print((action_list))
+        # print(len(action_list))
+        assert len(text_list) == len(tag_name_list)
+        assert len(text_list) == len(action_list)
+        tag_list = list()
+        for token in tag_name_list:
+            tag_list.append(self.label_dict.token2idx(token))
+        action_tag_list = list()
+        for token in action_list:
+            action_tag_list.append(self.label_dict.token2idx(token))
+        # print(text_list)
+        # print(len(text_list))
+        # print(tag_list)
+        # print(len(tag_list))
+        # print(action_tag_list)
+        # print(len(action_tag_list))
+        # print('='*15)
+        # exit()
+        return text_list, tag_list, action_tag_list

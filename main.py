@@ -66,6 +66,7 @@ class myModel(nn.Module):
         self.num_class = num_class
         self.vocab = vocab
         self.fc = nn.Linear(self.embedding_size, self.num_class)
+        self.fc_action = nn.Linear(self.embedding_size, self.num_class)
         self.CRF_layer = DynamicCRF(num_class)
         self.loss_type = loss_type
         self.bert_vocab = vocab
@@ -97,15 +98,40 @@ class myModel(nn.Module):
         cost = cost.view((y.size(1), -1))
         return torch.mean(cost), g.view(y.shape)
 
-    def forward(self, text_data, in_mask_matrix, in_tag_matrix, fine_tune=False, gamma=None):
+    def forward(self, text_data, in_mask_matrix, in_tag_matrix, fine_tune=False, gamma=None, in_action_tag_matrix=None, in_action_mask_matrix=None):
+        # print(text_data)
+        # print(len(text_data[0]))
+        # print(in_mask_matrix)
+        # print(len(in_mask_matrix[0]))
+        # print(in_tag_matrix)
+        # print(len(in_tag_matrix[0]))
+        # print(in_action_mask_matrix)
+        # print(len(in_action_mask_matrix[0]))
+        # print(in_action_tag_matrix)
+        # print(len(in_action_tag_matrix[0]))
         current_batch_size = len(text_data)
         max_len = 0
         for instance in text_data:
             max_len = max(len(instance), max_len)
         seq_len = max_len + 1 # 1 for [CLS]]
 
+        # SEQUENCE TAGGING
+        # in_action_mask_matrix.size() == [batch_size, seq_len]
+        # in_action_tag_matrix.size() == [batch_size, seq_len]
+        if in_action_mask_matrix is not None and in_action_tag_matrix is not None :
+            action_mask_matrix = torch.tensor(in_action_mask_matrix, dtype=torch.uint8).t_().contiguous()
+            action_tag_matrix = torch.LongTensor(in_action_tag_matrix).t_().contiguous()  # size = [seq_len, batch_size]
+            if torch.cuda.is_available():
+                action_mask_matrix = action_mask_matrix.cuda(self.device)
+                action_tag_matrix = action_tag_matrix.cuda(self.device)
+            assert action_mask_matrix.size() == action_tag_matrix.size()
+            assert action_mask_matrix.size() == torch.Size([seq_len, current_batch_size])
+            # print(action_mask_matrix.size())
+            # print(action_tag_matrix.size())
+
+        # CHAR GENERATION
         # in_mask_matrix.size() == [batch_size, seq_len]
-        # in_tag_matrix.size() == [batch_size, seq_len]
+        # in_action_tag_matrix.size() == [batch_size, seq_len]
         mask_matrix = torch.tensor(in_mask_matrix, dtype=torch.uint8).t_().contiguous()
         tag_matrix = torch.LongTensor(in_tag_matrix).t_().contiguous()  # size = [seq_len, batch_size]
         if torch.cuda.is_available():
@@ -113,6 +139,8 @@ class myModel(nn.Module):
             tag_matrix = tag_matrix.cuda(self.device)
         assert mask_matrix.size() == tag_matrix.size()
         assert mask_matrix.size() == torch.Size([seq_len, current_batch_size])
+        # print(mask_matrix.size())
+        # print(tag_matrix.size())
 
         # input text_data.size() = [batch_size, seq_len]
         data = batchify(text_data, self.vocab) # data.size() == [seq_len, batch_size]
@@ -126,16 +154,31 @@ class myModel(nn.Module):
         # dropout
         sequence_representation = F.dropout(sequence_representation, p=self.dropout, training=self.training) # [seq_len, batch_size, embedding_size]
         sequence_representation = sequence_representation.view(current_batch_size * seq_len, self.embedding_size) # [seq_len * batch_size, embedding_size]
+
+        # To Sequence char fc
         sequence_emissions = self.fc(sequence_representation) # [seq_len * batch_size, num_class]; num_class: 所有token in vocab
         sequence_emissions = sequence_emissions.view(seq_len, current_batch_size, self.num_class) # [seq_len, batch_size, num_class]; num_class: 所有token in vocab
-
         # bert finetune loss
         probs = torch.softmax(sequence_emissions, -1)
+
+
+        # To Sequence label fc
+        if in_action_mask_matrix is not None and in_action_tag_matrix is not None :
+            action_sequence_emissions = self.fc_action(sequence_representation)  # [seq_len * batch_size, num_class]; num_class: 所有token in vocab
+            action_sequence_emissions = action_sequence_emissions.view(seq_len, current_batch_size, self.num_class)  # [seq_len, batch_size, num_class]; num_class: 所有token in vocab
+            action_probs = torch.softmax(action_sequence_emissions, -1)
+
         if "FC" in self.loss_type:
             loss_ft_fc, g = self.fc_nll_loss(probs, tag_matrix, mask_matrix, gamma=gamma)
         else:
             loss_ft = self.nll_loss(probs, tag_matrix, mask_matrix)
 
+        action_loss_ft_fc, action_loss_ft = torch.tensor(0.0), torch.tensor(0.0)
+        if in_action_mask_matrix is not None and in_action_tag_matrix is not None:
+            action_loss_ft_fc, action_g = self.fc_nll_loss(action_probs, action_tag_matrix, action_mask_matrix, gamma=gamma)
+            action_loss_ft = self.nll_loss(action_probs, action_tag_matrix, action_mask_matrix)
+
+        # CRF Layers (word generation)
         sequence_emissions = sequence_emissions.transpose(0, 1)
         tag_matrix = tag_matrix.transpose(0, 1) 
         mask_matrix = mask_matrix.transpose(0, 1)
@@ -149,22 +192,28 @@ class myModel(nn.Module):
         decode_result = self.CRF_layer.decode(sequence_emissions, mask = mask_matrix)
         self.decode_scores, self.decode_result = decode_result
         self.decode_result = self.decode_result.tolist()
-        
+
         if self.loss_type == 'CRF':
             loss = loss_crf
-            return self.decode_result, loss, loss_crf.item(), 0.0, input_data
+            return self.decode_result, loss, loss_crf.item(), 0.0, 0.0, input_data
         elif self.loss_type == 'FT_CRF':
             loss = loss_ft + loss_crf
-            return self.decode_result, loss, loss_crf.item(), loss_ft.item(), input_data
+            return self.decode_result, loss, loss_crf.item(), loss_ft.item(), 0.0, input_data
         elif self.loss_type == 'FC_FT_CRF':
             loss = loss_ft_fc + loss_crf_fc
-            return self.decode_result, loss, loss_crf_fc.item(), loss_ft_fc.item(), input_data
+            return self.decode_result, loss, loss_crf_fc.item(), loss_ft_fc.item(), 0.0, input_data
         elif self.loss_type == 'FC_CRF':
             loss = loss_crf_fc
-            return self.decode_result, loss, loss_crf_fc.item(), 0.0, input_data
+            return self.decode_result, loss, loss_crf_fc.item(), 0.0, 0.0, input_data
+        elif self.loss_type == 'FC_FT_CRF_LABEL_FT':
+            loss = loss_ft_fc + loss_crf_fc + action_loss_ft
+            return self.decode_result, loss, loss_crf_fc.item(), loss_ft_fc.item(), action_loss_ft.item(), input_data
+        elif self.loss_type == 'FC_FT_CRF_LABEL_FT_FC':
+            loss = loss_ft_fc + loss_crf_fc + action_loss_ft_fc
+            return self.decode_result, loss, loss_crf_fc.item(), loss_ft_fc.item(), action_loss_ft_fc.item(), input_data
         else:
             print("error")
-            return self.decode_result, 0, 0, 0, input_data
+            return self.decode_result, 0, 0, 0, 0, input_data
 
 import argparse
 def parse_config():
@@ -281,6 +330,7 @@ if __name__ == "__main__":
         loss_accumulated = 0.
         loss_crf_accumulated = 0.
         loss_ft_accumulated = 0.
+        loss_action_accumulated = 0.
 
         model.train()
         print ('-------------------------------------------')
@@ -297,14 +347,30 @@ if __name__ == "__main__":
             acc_bs += 1
             optimizer.zero_grad()
 
-            train_batch_text_list, train_batch_tag_list = nerdata.get_next_batch(batch_size, mode = 'train')
+            train_batch_text_list, train_batch_tag_list, train_action_tag_list = nerdata.get_next_batch(batch_size, mode = 'train')
+            # print(train_batch_text_list)
+            # print(train_batch_tag_list)
+            # print(train_action_tag_list)
+            # print('='*10)
             # tag target matrix
             train_tag_matrix = process_batch_tag(train_batch_tag_list, nerdata.label_dict)
             # tag mask matrix
             train_mask_matrix = make_mask(train_batch_tag_list)
+
+            # print(train_tag_matrix)
+            # print(train_mask_matrix)
+            # print([id_label_dict[w] for w in train_tag_matrix[0]])
+            # print(train_action_tag_list)
+            # action tag target matrix
+            train_action_tag_matrix = process_batch_tag(train_action_tag_list, nerdata.label_dict)
+            # action tag mask matrix
+            train_action_mask_matrix = make_mask(train_action_tag_list)
+            # print(train_action_mask_matrix)
+
             # forward computation
-            train_batch_result, train_loss, loss_crf, loss_ft, train_input_data = \
-            model(train_batch_text_list, train_mask_matrix, train_tag_matrix, fine_tune, args.gamma)
+            train_batch_result, train_loss, loss_crf, loss_ft, loss_action, train_input_data = \
+                model(train_batch_text_list, train_mask_matrix, train_tag_matrix, fine_tune, \
+                      args.gamma, train_action_tag_matrix, train_action_mask_matrix)
 
             l2_reg = None
             for W in model.parameters():
@@ -318,6 +384,7 @@ if __name__ == "__main__":
             loss_accumulated += train_loss.item()
             loss_crf_accumulated += loss_crf
             loss_ft_accumulated += loss_ft
+            loss_action_accumulated += loss_action
             
             train_loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -330,9 +397,12 @@ if __name__ == "__main__":
                 total_train_true.extend(list(train_batch_tag_list[i]))
 
             if acc_bs % args.print_every == 0:
-                print ("gBatch %d, lBatch %d, loss %.5f, loss_crf %.5f, loss_ft %.5f" % \
-                        (acc_bs, batches_processed, loss_accumulated / batches_processed,\
-                         loss_crf_accumulated / batches_processed, loss_ft_accumulated / batches_processed))
+                print ("gBatch %d, lBatch %d, loss %.5f, loss_crf %.5f, loss_ft %.5f, action_loss %.5f" % \
+                        (acc_bs, batches_processed, \
+                         loss_accumulated / batches_processed,\
+                         loss_crf_accumulated / batches_processed, \
+                         loss_ft_accumulated / batches_processed, \
+                         loss_action_accumulated / batches_processed))
         
             if acc_bs % args.save_every == 0:
                 model.eval()
@@ -342,10 +412,10 @@ if __name__ == "__main__":
                 with torch.no_grad():
                     with open(dev_eval_path, 'w', encoding = 'utf8') as o:
                         for dev_step in range(dev_step_num):
-                            dev_batch_text_list, dev_batch_tag_list = nerdata.get_next_batch(batch_size = 1, mode = 'dev')
+                            dev_batch_text_list, dev_batch_tag_list, _ = nerdata.get_next_batch(batch_size = 1, mode = 'dev')
                             dev_tag_matrix = process_batch_tag(dev_batch_tag_list, nerdata.label_dict)
                             dev_mask_matrix = make_mask(dev_batch_tag_list)
-                            dev_batch_result, _, _, _, dev_input_data = model(dev_batch_text_list, dev_mask_matrix, dev_tag_matrix, fine_tune = False)
+                            dev_batch_result, _, _, _, _, dev_input_data = model(dev_batch_text_list, dev_mask_matrix, dev_tag_matrix, fine_tune = False)
 
                             dev_text = ''
                             for token in dev_batch_text_list[0]:
@@ -371,17 +441,6 @@ if __name__ == "__main__":
                     all_right, all_wrong = 0, 0
 
                     for glist, plist, wlist in zip(gold_tag_list, pred_tag_list, wrong_tag_list):
-                        # acc = 0.
-                        # correct = glist
-                        # wrong = wlist
-                        # predict = plist
-                        # print(correct)
-                        # print(wrong)
-                        # print(predict)
-                        # exit()
-                        # for gi, gtag in enumerate(glist):
-                        #     if gtag == plist[gi]:
-                        #         acc += 1
 
                         for c, w, p in zip(glist, wlist, plist):
                             # Right
@@ -447,10 +506,10 @@ if __name__ == "__main__":
                         with torch.no_grad():
                             with open(test_eval_path%epoch, 'w', encoding='utf8') as o:
                                 for test_step in range(test_step_num):
-                                    test_batch_text_list, test_batch_tag_list = nerdata.get_next_batch(batch_size=1, mode='test')
+                                    test_batch_text_list, test_batch_tag_list, _ = nerdata.get_next_batch(batch_size=1, mode='test')
                                     test_tag_matrix = process_batch_tag(test_batch_tag_list, nerdata.label_dict)
                                     test_mask_matrix = make_mask(test_batch_tag_list)
-                                    test_batch_result, _, _, _, test_input_data = model(test_batch_text_list, test_mask_matrix, test_tag_matrix, fine_tune=False)
+                                    test_batch_result, _, _, _, _, test_input_data = model(test_batch_text_list, test_mask_matrix, test_tag_matrix, fine_tune=False)
 
                                     # Input
                                     test_text = ''
