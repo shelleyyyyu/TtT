@@ -314,6 +314,8 @@ if __name__ == "__main__":
             recall_wrong = wrong_true + wrong_false
             recall = wrong_true / all_wrong
             precision = wrong_true / (right_false + wrong_true)
+            # F-Measure = (2 * Precision * Recall) / (Precision + Recall)
             f1 = (2 * recall * precision) / (recall + precision + 1e-8)
-            acc = (right_true + wrong_true) / (right_true + wrong_true + right_false + wrong_false + 1e-8)
-            print('Official test acc : %.4f, f1 : %.4f, precision : %.4f, recall : %.4f, far_wrong : %.4f' % (acc, f1, precision, recall, far))
+            # F0.5-Measure = (1.25 * Precision * Recall) / (0.25 * Precision + Recall)
+            f0_5 = (1.25 * recall * precision) / (recall + (0.25 * precision)) + 1e-8
+            print('Official f0.5 : %.4f, precision : %.4f, recall : %.4f, far_wrong : %.4f' % (f0_5, precision, recall, far))
