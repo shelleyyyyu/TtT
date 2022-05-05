@@ -115,7 +115,7 @@ class DataLoader:
                     if len(l.strip().split('\t')) != 3:
                         continue
                     one_text, one_tag = self.process_one_line_ocr(l)
-                elif 'NLPCC' in in_path or 'CGED' in in_path or 'zh_merge_data' in in_path or 'zh_full_merge_data' in in_path:
+                elif 'NLPCC' in in_path or 'nlpcc' in in_path or 'CGED' in in_path or 'zh_merge_data' in in_path or 'zh_full_merge_data' in in_path:
                     if '-NONE-' in l:
                         l = l.replace('-NONE-', '')
                     if len(l.split('\t')) != 2:
