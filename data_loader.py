@@ -199,3 +199,30 @@ class DataLoader:
         for token in tag_name_list:
             tag_list.append(self.label_dict.token2idx(token))
         return text_list, tag_list
+
+    def process_one_list(self, xs, ys):
+        all_text_list, all_tag_list = [], []
+        for idx, (x, y) in enumerate(zip(xs, ys)):
+            if x is None or y is None:
+                continue
+            x = list(x)
+            y = list(y)
+            text_list = x #+ ['<-SEP->']
+            tag_name_list = y + ['<-SEP->']
+            if len(tag_name_list) > len(text_list):
+                text_list += ['<-MASK->'] * (len(tag_name_list) - len(text_list))
+                text_list += ['<-SEP->']
+                tag_name_list += ['<-SEP->']
+            elif len(tag_name_list) < len(text_list):
+                tag_name_list += ['<-SEP->'] + ['<-PAD->'] * (len(text_list) - len(tag_name_list))
+                text_list += ['<-SEP->']
+            else:
+                tag_name_list += ['<-SEP->']
+                text_list += ['<-SEP->']
+            assert len(text_list) == len(tag_name_list)
+            tag_list = list()
+            for token in tag_name_list:
+                tag_list.append(self.label_dict.token2idx(token))
+            all_text_list.append(text_list)
+            all_tag_list.append(tag_list)
+        return all_text_list, all_tag_list

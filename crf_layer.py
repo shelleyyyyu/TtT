@@ -63,13 +63,13 @@ class DynamicCRF(nn.Module):
             llh = (1-pp)**gamma * llh
         
         if reduction == 'none':
-            return llh
+            return None, llh
         if reduction == 'sum':
-            return llh.sum()
+            return llh.sum(), llh
         if reduction == 'mean':
-            return llh.mean()
+            return llh.mean(), llh
         assert reduction == 'token_mean'
-        return llh.sum() / mask.type_as(emissions).sum()
+        return llh.sum() / mask.type_as(emissions).sum(), llh / mask.type_as(emissions).sum()
 
     def decode(self, emissions, mask=None, beam=None):
         """
