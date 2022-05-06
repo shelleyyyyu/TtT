@@ -89,5 +89,6 @@ python -u main.py \
     --l2_lambda 1e-5 \
     --training_max_len 64 \
     --augment_percentage 0.2 \
-    --augment_type by_rule \
+    --augment_method by_rule \
+    --augment_type insert \
     --augment_descending

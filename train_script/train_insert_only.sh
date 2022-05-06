@@ -28,13 +28,13 @@ nohup python -u main.py \
     --l2_lambda 1e-5 \
     --training_max_len 64 > ./logs/train.nlpcc.insert.only.log 2>&1&
 
+#################
 
 python -u evaluation_test.py \
     --bert_path  $bpath/bert.ckpt\
     --bert_vocab $bpath/vocab.txt \
     --train_data ./data/NLPCC/nlpcc/train_only_insert_augment_1.txt \
     --dev_data ./data/NLPCC/nlpcc/test.txt\
-    --test_data ./data/NLPCC/nlpcc/test.txt\
     --batch_size 80 \
     --lr 1e-5 \
     --dropout 0.1 \
@@ -52,4 +52,6 @@ python -u evaluation_test.py \
     --test_eval_path $cpath/test_eval_%d.txt \
     --l2_lambda 1e-5 \
     --training_max_len 64 \
-    --restore_ckpt_path $cpath
+    --restore_ckpt_path $cpath \
+    --restore_ckpt_path ./ckpt/insert_only_epoch_29_dev_f1_0.527 \
+    --test_data ./data/NLPCC/nlpcc/test_insert.txt
