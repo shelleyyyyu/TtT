@@ -181,7 +181,7 @@ if __name__ == "__main__":
             train_batch_text_list, train_batch_tag_list = nerdata.get_next_batch(args.batch_size, mode = 'train')
             # if is first batch, will not have augment data, random the train batch to pad the batch
             if len(to_augment_text_list) == 0 or len(to_augment_tag_list) == 0:
-                index_list = random.sample([i for i in range(len(train_batch_text_list))], int(int(args.batch_size * args.augment_percentage)-len(train_batch_text_list)))
+                index_list = random.sample([i for i in range(len(train_batch_text_list))], int(int(args.batch_size * (1+args.augment_percentage))-len(train_batch_text_list)))
                 for index in index_list:
                     train_batch_text_list.append(train_batch_text_list[index])
                     train_batch_tag_list.append(train_batch_tag_list[index])
@@ -192,7 +192,7 @@ if __name__ == "__main__":
                 to_augment_text_list, to_augment_tag_list = [], []
                 # if have previous augment batch, will not have augment data, random the train batch to pad the batch
                 if len(train_batch_text_list) != int(args.batch_size * (1+args.augment_percentage)):
-                    index_list = random.sample([i for i in range(len(train_batch_text_list))], int(int(args.batch_size * args.augment_percentage)-len(train_batch_text_list)))
+                    index_list = random.sample([i for i in range(len(train_batch_text_list))], int(int(args.batch_size * (1+args.augment_percentage))-len(train_batch_text_list)))
                     for index in index_list:
                         train_batch_text_list.append(train_batch_text_list[index])
                         train_batch_tag_list.append(train_batch_tag_list[index])
