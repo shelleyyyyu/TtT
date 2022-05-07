@@ -400,34 +400,18 @@ if __name__ == "__main__":
                                     #FN
                                     wrong_false += 1
 
-                        # ai = acc / (len(plist)+1e-8)
-                        # pi = acc / (len(plist)+1e-8)
-                        # ri = acc / (len(glist)+1e-8)
-                        # fi = 2 * pi * ri / (pi + ri + 1e-8)
-                        # aa += ai
-                        # pp += pi
-                        # rr += ri
-                        # ff += fi
-
-                    # one_dev_acc = aa / len(gold_tag_list)
-                    # one_dev_f1 = ff / len(gold_tag_list)
-                    # one_dev_precision = pp / len(gold_tag_list)
-                    # one_dev_recall = rr / len(gold_tag_list)
                     all_wrong = wrong_true + wrong_false
                     recall_wrong = wrong_true + wrong_false
                     correct_wrong_r = wrong_true / all_wrong
                     correct_wrong_p = wrong_true / (right_false + wrong_true)
                     correct_wrong_f1 = (2 * correct_wrong_r * correct_wrong_p) / (correct_wrong_r + correct_wrong_p + 1e-8)
                     correct_wrong_acc = (right_true + wrong_true) / ( right_true + wrong_true + right_false + wrong_false + 1e-8)
-                    # print('############## DEV ##############')
-                    # print([id_label_dict[p] for p in plist])
-                    # print([id_label_dict[p] for p in wlist])
-                    # print([id_label_dict[p] for p in glist])
                     print('At epoch %d, official dev acc : %.4f, f1 : %.4f, precision : %.4f, recall : %.4f' % (epoch, correct_wrong_acc, correct_wrong_f1, correct_wrong_p, correct_wrong_r))
 
                     if correct_wrong_f1 > max_dev_f1:
                         model.eval()
-                        ckpt_fname = directory + '/epoch_%d_dev_f1_%.3f' % (epoch, correct_wrong_f1)
+                        # ckpt_fname = directory + '/epoch_%d_dev_f1_%.3f' % (epoch, correct_wrong_f1)
+                        ckpt_fname = directory + '/epoch_%d' % (epoch)
                         max_dev_f1 = correct_wrong_f1
                         dev_acc_list.append(correct_wrong_acc)
                         dev_f1_list.append(correct_wrong_f1)
@@ -441,75 +425,75 @@ if __name__ == "__main__":
                                     'bert_vocab': model.bert_vocab
                                     }, ckpt_fname)
 
-                        gold_test_tag_list = []
-                        pred_test_tag_list = []
-                        wrong_test_tag_list = []
-                        with torch.no_grad():
-                            with open(test_eval_path%epoch, 'w', encoding='utf8') as o:
-                                for test_step in range(test_step_num):
-                                    test_batch_text_list, test_batch_tag_list = nerdata.get_next_batch(batch_size=1, mode='test')
-                                    test_tag_matrix = process_batch_tag(test_batch_tag_list, nerdata.label_dict)
-                                    test_mask_matrix = make_mask(test_batch_tag_list)
-                                    test_batch_result, _, _, _, test_input_data = model(test_batch_text_list, test_mask_matrix, test_tag_matrix, fine_tune=False)
-
-                                    # Input
-                                    test_text = ''
-                                    for token in test_batch_text_list[0]:
-                                        test_text += token + ' '
-                                    test_text = test_text.strip()
-
-                                    # GroundTruth
-                                    ground_text = ''
-                                    for token in test_batch_tag_list[0]:
-                                        ground_text += id_label_dict[token] + ' '
-                                    ground_text = ground_text.strip()
-
-                                    # Predict
-                                    valid_test_text_len = len(test_batch_text_list[0])
-                                    test_tag_str = ''
-                                    test_pred_tags = []
-                                    for tag in test_batch_result[0][1:valid_test_text_len + 1]:
-                                        test_tag_str += id_label_dict[int(tag)] + ' '
-                                        test_pred_tags.append(int(tag))
-                                    test_tag_str = test_tag_str.strip()
-
-                                    o.writelines(test_text + '\t' + test_tag_str + '\t' + ground_text + '\n')
-                                    wrong_test_tag_list.append(test_input_data[1:].t()[0].tolist())
-                                    gold_test_tag_list.append(test_batch_tag_list[0])
-                                    pred_test_tag_list.append(test_pred_tags)
-
-                            assert len(gold_test_tag_list) == len(pred_test_tag_list)
-                            right_true, right_false, wrong_true, wrong_false = 0, 0, 0, 0
-                            all_right, all_wrong = 0, 0
-
-                            for glist, plist, wlist in zip(gold_test_tag_list, pred_test_tag_list, wrong_test_tag_list):
-
-                                for c, w, p in zip(glist, wlist, plist):
-                                    # 原始正確 Right
-                                    if w == c:
-                                        if p == c:
-                                            # 原始正確 糾正正確
-                                            right_true += 1
-                                        else:
-                                            # 原始正確 糾正錯誤
-                                            right_false += 1
-                                    # 原始錯誤
-                                    else:  # Wrong
-                                        if p == c:
-                                            # 原始錯誤 糾正正確
-                                            wrong_true += 1
-                                        else:
-                                            # 原始錯誤 糾正錯誤 // 未糾正
-                                            wrong_false += 1
-
-                            all_wrong = wrong_true + wrong_false
-                            recall_wrong = wrong_true + wrong_false
-                            correct_wrong_r = wrong_true / all_wrong
-                            correct_wrong_p = wrong_true / (right_false + wrong_true)#(recall_wrong + right_false)
-                            correct_wrong_f1 = (2 * correct_wrong_r * correct_wrong_p) / (correct_wrong_r + correct_wrong_p + 1e-8)
-                            correct_wrong_acc = (right_true + wrong_true) / ( right_true + wrong_true + right_false + wrong_false + 1e-8)
-                            # ckpt_fname = directory + '/epoch_%d_dev_f1_%.3f' % (epoch + 1, correct_wrong_f1)
-                            print('At epoch %d, official test acc: %.4f, f1 : %.4f, precision : %.4f, recall : %.4f' % (epoch, correct_wrong_acc, correct_wrong_f1, correct_wrong_p, correct_wrong_r))
+                        # gold_test_tag_list = []
+                        # pred_test_tag_list = []
+                        # wrong_test_tag_list = []
+                        # with torch.no_grad():
+                        #     with open(test_eval_path%epoch, 'w', encoding='utf8') as o:
+                        #         for test_step in range(test_step_num):
+                        #             test_batch_text_list, test_batch_tag_list = nerdata.get_next_batch(batch_size=1, mode='test')
+                        #             test_tag_matrix = process_batch_tag(test_batch_tag_list, nerdata.label_dict)
+                        #             test_mask_matrix = make_mask(test_batch_tag_list)
+                        #             test_batch_result, _, _, _, test_input_data = model(test_batch_text_list, test_mask_matrix, test_tag_matrix, fine_tune=False)
+                        #
+                        #             # Input
+                        #             test_text = ''
+                        #             for token in test_batch_text_list[0]:
+                        #                 test_text += token + ' '
+                        #             test_text = test_text.strip()
+                        #
+                        #             # GroundTruth
+                        #             ground_text = ''
+                        #             for token in test_batch_tag_list[0]:
+                        #                 ground_text += id_label_dict[token] + ' '
+                        #             ground_text = ground_text.strip()
+                        #
+                        #             # Predict
+                        #             valid_test_text_len = len(test_batch_text_list[0])
+                        #             test_tag_str = ''
+                        #             test_pred_tags = []
+                        #             for tag in test_batch_result[0][1:valid_test_text_len + 1]:
+                        #                 test_tag_str += id_label_dict[int(tag)] + ' '
+                        #                 test_pred_tags.append(int(tag))
+                        #             test_tag_str = test_tag_str.strip()
+                        #
+                        #             o.writelines(test_text + '\t' + test_tag_str + '\t' + ground_text + '\n')
+                        #             wrong_test_tag_list.append(test_input_data[1:].t()[0].tolist())
+                        #             gold_test_tag_list.append(test_batch_tag_list[0])
+                        #             pred_test_tag_list.append(test_pred_tags)
+                        #
+                        #     assert len(gold_test_tag_list) == len(pred_test_tag_list)
+                        #     right_true, right_false, wrong_true, wrong_false = 0, 0, 0, 0
+                        #     all_right, all_wrong = 0, 0
+                        #
+                        #     for glist, plist, wlist in zip(gold_test_tag_list, pred_test_tag_list, wrong_test_tag_list):
+                        #
+                        #         for c, w, p in zip(glist, wlist, plist):
+                        #             # 原始正確 Right
+                        #             if w == c:
+                        #                 if p == c:
+                        #                     # 原始正確 糾正正確
+                        #                     right_true += 1
+                        #                 else:
+                        #                     # 原始正確 糾正錯誤
+                        #                     right_false += 1
+                        #             # 原始錯誤
+                        #             else:  # Wrong
+                        #                 if p == c:
+                        #                     # 原始錯誤 糾正正確
+                        #                     wrong_true += 1
+                        #                 else:
+                        #                     # 原始錯誤 糾正錯誤 // 未糾正
+                        #                     wrong_false += 1
+                        #
+                        #     all_wrong = wrong_true + wrong_false
+                        #     recall_wrong = wrong_true + wrong_false
+                        #     correct_wrong_r = wrong_true / all_wrong
+                        #     correct_wrong_p = wrong_true / (right_false + wrong_true)#(recall_wrong + right_false)
+                        #     correct_wrong_f1 = (2 * correct_wrong_r * correct_wrong_p) / (correct_wrong_r + correct_wrong_p + 1e-8)
+                        #     correct_wrong_acc = (right_true + wrong_true) / ( right_true + wrong_true + right_false + wrong_false + 1e-8)
+                        #     # ckpt_fname = directory + '/epoch_%d_dev_f1_%.3f' % (epoch + 1, correct_wrong_f1)
+                        #     print('At epoch %d, official test acc: %.4f, f1 : %.4f, precision : %.4f, recall : %.4f' % (epoch, correct_wrong_acc, correct_wrong_f1, correct_wrong_p, correct_wrong_r))
                 model.train()
 
 
