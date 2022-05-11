@@ -222,8 +222,7 @@ if __name__ == "__main__":
                             dev_batch_text_list, dev_batch_tag_list = nerdata.get_next_batch(batch_size = batch_size, mode = 'dev')
                             dev_tag_matrix = process_batch_tag(dev_batch_tag_list, nerdata.label_dict)
                             dev_mask_matrix = make_mask(dev_batch_tag_list)
-                            dev_batch_result, _, _, _, dev_input_data, _, _, _ = model(dev_batch_text_list, dev_mask_matrix, dev_tag_matrix, fine_tune = False)
-
+                            dev_batch_result, _, _, _, dev_input_data, _, _ = model(dev_batch_text_list, dev_mask_matrix, dev_tag_matrix, fine_tune = False)
                             dev_text = ''
                             for token in dev_batch_text_list[0]:
                                 dev_text += token + ' '
