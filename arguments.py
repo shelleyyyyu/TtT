@@ -28,12 +28,17 @@ def parse_config():
     parser.add_argument('--l2_lambda', type=float)
     parser.add_argument('--training_max_len', type=int)
     parser.add_argument('--restore_ckpt_path', type=str, default=None)
-    parser.add_argument('--augment_percentage', type=float, default=1.0)
+
     # by_rule: random pos; rule-based;
     # by_pos_auto: unconfident pos; auto-based (based on model gen candidates)
     # by_pos_rule: rule-based; unconfident pos;
+
+    parser.add_argument('--augment_percentage', type=float, default=1.0)
     parser.add_argument('--augment_method', default='by_rule', choices=['by_rule', 'by_pos_auto', 'by_pos_rule', None])
+    parser.add_argument('--augment_cold_start_epoch', type=int, default=20)
+
     parser.add_argument('--augment_type', default='contributed', choices=['contributed', 'average', 'insert', 'delete', 'substitution', 'paraphrase'])
+
     parser.add_argument('--augment_descending', action='store_true')
 
     return parser.parse_args()

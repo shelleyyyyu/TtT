@@ -165,18 +165,18 @@ if __name__ == "__main__":
                 # 1. Random augmentation
                 augment_data.extend(dataAugmentationByRule.augment(to_augment_target_data))
             elif args.augment_method == 'by_pos_auto':
-                # 2. pos/candidate based augmentation
-                augment_data = [''.join([bert_vocab.idx2token(result) for result in train_result if
-                                         bert_vocab.idx2token(result) != CLS and bert_vocab.idx2token(
-                                             result) != MASK and bert_vocab.idx2token(
-                                             result) != SEP and bert_vocab.idx2token(result) != PAD]) for
-                                train_idx, train_result in enumerate(train_batch_result) if
-                                train_idx in to_augment_data_idxs]
-                # 2. Candidate augmented dicts
-                candidates_dict_list = get_candidates_dict_list(to_augment_correct_data_detail, bert_vocab)
-                # primary_result, to_augment_correct_data, result_details
-                augment_data = dataAugmentationByRule.augment_by_candidate(augment_data, to_augment_correct_data, to_augment_target_data, candidates_dict_list)
-                #augment_data.extend()
+                if epoch > args.augment_cold_start_epoch:
+                    # 2. pos/candidate based augmentation
+                    augment_data = [''.join([bert_vocab.idx2token(result) for result in train_result if
+                                             bert_vocab.idx2token(result) != CLS and bert_vocab.idx2token(
+                                                 result) != MASK and bert_vocab.idx2token(
+                                                 result) != SEP and bert_vocab.idx2token(result) != PAD]) for
+                                    train_idx, train_result in enumerate(train_batch_result) if
+                                    train_idx in to_augment_data_idxs]
+                    # 2. Candidate augmented dicts
+                    candidates_dict_list = get_candidates_dict_list(to_augment_correct_data_detail, bert_vocab)
+                    # primary_result, to_augment_correct_data, result_details
+                    augment_data = dataAugmentationByRule.augment_by_candidate(augment_data, to_augment_correct_data, to_augment_target_data, candidates_dict_list)
             elif args.augment_method == 'by_pos_rule':
                 augment_data = []
 
