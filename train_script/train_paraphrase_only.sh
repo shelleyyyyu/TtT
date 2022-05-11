@@ -42,7 +42,6 @@ nohup python -u evaluation_test.py \
     --bert_vocab $bpath/vocab.txt \
     --train_data ./data/NLPCC/nlpcc/train_only_paraphrase_augment_1.txt \
     --dev_data ./data/NLPCC/nlpcc/test.txt\
-    --test_data ./data/NLPCC/nlpcc/test.txt\
     --batch_size 80 \
     --lr 1e-5 \
     --dropout 0.1 \
@@ -60,4 +59,5 @@ nohup python -u evaluation_test.py \
     --test_eval_path $cpath/test_eval_%d.txt \
     --l2_lambda 1e-5 \
     --training_max_len 64 \
-    --restore_ckpt_path ./ckpt/paraphrase_only_epoch_29_dev_f1_0.526 > ./logs/test.nlpcc.paraphrase.only.log 2>&1&
+    --restore_ckpt_path ./ckpt/paraphrase_only_epoch_29_dev_f1_0.526 \
+    --test_data ./data/NLPCC/nlpcc/test.txt > ./logs/test.nlpcc.paraphrase.only.log 2>&1&

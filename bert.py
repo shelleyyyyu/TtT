@@ -1,8 +1,7 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
-
-from utils import gelu, LayerNorm
+from utility import gelu, LayerNorm
 from transformer import TransformerLayer, Embedding, LearnedPositionalEmbedding
 
 class BERTLM(nn.Module):

@@ -3,7 +3,7 @@ from torch import nn
 from torch.nn import Parameter
 import torch.nn.functional as F
 
-from utils import gelu, LayerNorm
+from utility import gelu, LayerNorm
 import math
 
 class TransformerLayer(nn.Module):

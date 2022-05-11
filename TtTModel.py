@@ -2,7 +2,35 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from crf_layer import DynamicCRF
-from data import CLS
+from bert import BERTLM
+from data import Vocab, CLS, SEP, MASK
+
+def init_empty_bert_model(bert_args, bert_vocab, gpu_id):
+    bert_model = BERTLM(gpu_id, bert_vocab, bert_args.embed_dim, bert_args.ff_embed_dim, bert_args.num_heads, \
+            bert_args.dropout, bert_args.layers, bert_args.approx)
+    return bert_model
+
+def extract_parameters(ckpt_path):
+    model_ckpt = torch.load(ckpt_path, map_location='cpu')
+    bert_args = model_ckpt['bert_args']
+    model_args = model_ckpt['args']
+    bert_vocab = model_ckpt['bert_vocab']
+    model_parameters = model_ckpt['model']
+    return bert_args, model_args, bert_vocab, model_parameters
+
+def init_bert_model(args, device, bert_vocab):
+    bert_ckpt= torch.load(args.bert_path)
+    bert_args = bert_ckpt['args']
+    bert_vocab = Vocab(bert_vocab, min_occur_cnt=bert_args.min_occur_cnt, specials=[CLS, SEP, MASK])
+    bert_model = BERTLM(device, bert_vocab, bert_args.embed_dim, bert_args.ff_embed_dim, bert_args.num_heads, \
+        bert_args.dropout, bert_args.layers, bert_args.approx)
+    bert_model.load_state_dict(bert_ckpt['model'])
+    if torch.cuda.is_available():
+        bert_model = bert_model.cuda(device)
+    if args.freeze == 1:
+        for p in bert_model.parameters():
+            p.requires_grad=False
+    return bert_model, bert_vocab, bert_args
 
 def ListsToTensor(xs, vocab):
     lens = [ len(x)+2 for x in xs]
@@ -86,8 +114,7 @@ class TtTModel(nn.Module):
         if torch.cuda.is_available():
             sequence_representation = sequence_representation.cuda(self.device)  # [seq_len, batch_size, embedding_size]
         # dropout
-        sequence_representation = F.dropout(sequence_representation, p=self.dropout,
-                                            training=self.training)  # [seq_len, batch_size, embedding_size]
+        sequence_representation = F.dropout(sequence_representation, p=self.dropout, training=self.training)  # [seq_len, batch_size, embedding_size]
         sequence_representation = sequence_representation.view(current_batch_size * seq_len,
                                                                self.embedding_size)  # [seq_len * batch_size, embedding_size]
         sequence_emissions = self.fc(
@@ -107,7 +134,6 @@ class TtTModel(nn.Module):
         mask_matrix = mask_matrix.transpose(0, 1)
 
         if "FC" in self.loss_type:
-            # loss_crf_fc = -self.CRF_layer(sequence_emissions, tag_matrix, mask = mask_matrix, reduction='token_mean', g=g.transpose(0, 1), gamma=gamma)
             loss_crf_fc, loss_crf_fc_list = self.CRF_layer(sequence_emissions, tag_matrix, mask=mask_matrix,
                                                            reduction='token_mean', g=None, gamma=gamma)
             loss_crf_fc = -1 * loss_crf_fc
@@ -119,25 +145,25 @@ class TtTModel(nn.Module):
             loss_crf_list = -1 * loss_crf_list
 
         decode_result = self.CRF_layer.decode(sequence_emissions, mask=mask_matrix)
-        self.decode_scores, self.decode_result = decode_result
-        self.decode_result = self.decode_result.tolist()
+        self.best_decode_scores, self.best_decode_result, self.decode_result = decode_result
+        self.best_decode_result = self.best_decode_result.tolist()
 
         if self.loss_type == 'CRF':
             loss_list = loss_crf_list.view(current_batch_size, -1)
             loss = loss_crf
-            return self.decode_result, loss, loss_crf.item(), 0.0, input_data, loss_list
+            return self.best_decode_result, loss, loss_crf.item(), 0.0, input_data, loss_list, self.decode_result
         elif self.loss_type == 'FT_CRF':
             loss_list = loss_ft_list + loss_crf_list.view(current_batch_size, -1)
             loss = loss_ft + loss_crf
-            return self.decode_result, loss, loss_crf.item(), loss_ft.item(), input_data, loss_list
+            return self.best_decode_result, loss, loss_crf.item(), loss_ft.item(), input_data, loss_list, self.decode_result
         elif self.loss_type == 'FC_FT_CRF':
             loss_list = loss_ft_fc_list + loss_crf_fc_list.view(current_batch_size, -1)
             loss = loss_ft_fc + loss_crf_fc
-            return self.decode_result, loss, loss_crf_fc.item(), loss_ft_fc.item(), input_data, loss_list
+            return self.best_decode_result, loss, loss_crf_fc.item(), loss_ft_fc.item(), input_data, loss_list, self.decode_result
         elif self.loss_type == 'FC_CRF':
             loss_list = loss_crf_fc_list.view(current_batch_size, -1)
             loss = loss_crf_fc
-            return self.decode_result, loss, loss_crf_fc.item(), 0.0, input_data, loss_list
+            return self.best_decode_result, loss, loss_crf_fc.item(), 0.0, input_data, loss_list, self.decode_result
         else:
             print("error")
-            return self.decode_result, 0, 0, 0, input_data, None
+            return self.best_decode_result, 0, 0, 0, input_data, None, self.decode_result

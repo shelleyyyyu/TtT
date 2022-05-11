@@ -1,7 +1,5 @@
 import torch
 from torch import nn
-from torch.nn import Parameter
-
 import math
 
 def gelu(x):
