@@ -179,8 +179,7 @@ if __name__ == "__main__":
                 #augment_data.extend()
             elif args.augment_method == 'by_pos_rule':
                 augment_data = []
-            print(augment_data)
-            exit()
+
             if len(augment_data) > 0:
                 to_augment_text_list, to_augment_tag_list = nerdata.process_one_list(augment_data, to_augment_correct_data)
 
