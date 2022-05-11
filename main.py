@@ -4,7 +4,7 @@ from data import CLS, SEP, MASK, PAD
 from data_loader import DataLoader
 import os
 from funcs import *
-from data_augmentation_rule.augment_by_rule import DataAugmentationByRule
+from augment_by_rule import DataAugmentationByRule
 from TtTModel import TtTModel, extract_parameters, init_bert_model, init_empty_bert_model
 from arguments import parse_config
 from augment_utils import get_candidates_dict_list
