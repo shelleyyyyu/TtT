@@ -180,7 +180,7 @@ class DataLoader:
         return text_list, tag_list, tag_name_list
 
     def process_one_list(self, xs, ys):
-        all_text_list, all_tag_list = [], []
+        all_text_list, all_tag_list, all_out_list = [], [], []
         for idx, (x, y) in enumerate(zip(xs, ys)):
             if x is None or y is None:
                 continue
@@ -204,4 +204,5 @@ class DataLoader:
                 tag_list.append(self.label_dict.token2idx(token))
             all_text_list.append(text_list)
             all_tag_list.append(tag_list)
-        return all_text_list, all_tag_list, tag_name_list
+            all_out_list.append(tag_name_list)
+        return all_text_list, all_tag_list, all_out_list
