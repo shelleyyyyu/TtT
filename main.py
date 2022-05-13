@@ -211,7 +211,6 @@ if __name__ == "__main__":
             sorted_loss_list, sorted_loss_index_list = torch.sort(loss_list[0], descending=args.augment_descending)
             to_augment_data_idxs = sorted_loss_index_list[:int(args.batch_size * args.augment_percentage)]
             to_augment_correct_data = [''.join([data for data in train_batch_out_list[idx] if data != CLS and data != MASK and data != SEP and data != PAD]) for idx in to_augment_data_idxs]
-            print(to_augment_correct_data)
             augment_data = dataAugmentationByRule.augment(to_augment_correct_data)
             to_augment_text_list, to_augment_tag_list, to_augment_out_list  = nerdata.process_one_list(augment_data, to_augment_correct_data)
             l2_reg = None
