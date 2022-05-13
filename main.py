@@ -6,7 +6,7 @@ from data_loader import DataLoader
 import os
 from funcs import *
 import argparse
-from data_augmentation_rule.augment_by_rule import DataAugmentationByRule
+from da.augment_by_rule import DataAugmentationByRule
 from TtTModel import TtTModel
 
 def extract_parameters(ckpt_path):
@@ -205,13 +205,13 @@ if __name__ == "__main__":
             train_batch_result, train_loss, loss_crf, loss_ft, train_input_data, loss_list = model(train_batch_text_list, train_mask_matrix, train_tag_matrix, fine_tune, args.gamma)
 
             # Augment current training data for next round training
-            train_input_data = train_input_data.t()
             loss_list = loss_list.view(-1, batch_size)
             sorted_loss_list, sorted_loss_index_list = torch.sort(loss_list[0], descending=args.augment_descending)
             to_augment_data_idxs = sorted_loss_index_list[:int(args.batch_size * args.augment_percentage)]
             to_augment_correct_data = [''.join([bert_vocab.idx2token(data) for data in train_batch_tag_list[idx] if bert_vocab.idx2token(data) != CLS and  bert_vocab.idx2token(data) != MASK and bert_vocab.idx2token(data) != SEP and bert_vocab.idx2token(data) != PAD]) for idx in to_augment_data_idxs]
             augment_data = dataAugmentationByRule.augment(to_augment_correct_data)
             to_augment_text_list, to_augment_tag_list = nerdata.process_one_list(augment_data, to_augment_correct_data)
+
             l2_reg = None
             for W in model.parameters():
                 if l2_reg is None:

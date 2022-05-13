@@ -18,7 +18,7 @@ nohup python -u main.py \
     --dropout 0.1 \
     --number_epoch 30 \
     --gpu_id 1 \
-    --print_every 50 \
+    --print_every 1 \
     --save_every 500 \
     --fine_tune \
     --loss_type FC_FT_CRF \
