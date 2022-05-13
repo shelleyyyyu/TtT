@@ -209,10 +209,9 @@ if __name__ == "__main__":
             loss_list = loss_list.view(-1, batch_size)
             sorted_loss_list, sorted_loss_index_list = torch.sort(loss_list[0], descending=args.augment_descending)
             to_augment_data_idxs = sorted_loss_index_list[:int(args.batch_size * args.augment_percentage)]
-            to_augment_correct_data = [''.join([data for data in train_batch_text_list[idx] if data != CLS and  data != MASK and data != SEP and data != PAD]) for idx in to_augment_data_idxs]
-            augment_data, types = dataAugmentationByRule.augment(to_augment_correct_data)
+            to_augment_correct_data = [''.join([bert_vocab.idx2token(data) for data in train_batch_tag_list[idx] if bert_vocab.idx2token(data) != CLS and  bert_vocab.idx2token(data) != MASK and bert_vocab.idx2token(data) != SEP and bert_vocab.idx2token(data) != PAD]) for idx in to_augment_data_idxs]
+            augment_data = dataAugmentationByRule.augment(to_augment_correct_data)
             to_augment_text_list, to_augment_tag_list = nerdata.process_one_list(augment_data, to_augment_correct_data)
-
             l2_reg = None
             for W in model.parameters():
                 if l2_reg is None:
