@@ -178,17 +178,19 @@ if __name__ == "__main__":
             optimizer.zero_grad()
 
             # Create next batch data
-            train_batch_text_list, train_batch_tag_list = nerdata.get_next_batch(args.batch_size, mode = 'train')
+            train_batch_text_list, train_batch_tag_list, train_batch_out_list = nerdata.get_next_batch(args.batch_size, mode = 'train')
             # if is first batch, will not have augment data, random the train batch to pad the batch
             if len(to_augment_text_list) == 0 or len(to_augment_tag_list) == 0:
                 index_list = random.sample([i for i in range(len(train_batch_text_list))], int(int(args.batch_size * (1+args.augment_percentage))-len(train_batch_text_list)))
                 for index in index_list:
                     train_batch_text_list.append(train_batch_text_list[index])
                     train_batch_tag_list.append(train_batch_tag_list[index])
+                    train_batch_out_list.append(train_batch_out_list[index])
             else:
                 # if have previous augment batch, will not have augment data, random the train batch to pad the batch
                 train_batch_text_list.extend(to_augment_text_list)
                 train_batch_tag_list.extend(to_augment_tag_list)
+                train_batch_out_list.extend(to_augment_out_list)
                 to_augment_text_list, to_augment_tag_list = [], []
                 # if have previous augment batch, will not have augment data, random the train batch to pad the batch
                 if len(train_batch_text_list) != int(args.batch_size * (1+args.augment_percentage)):
@@ -196,6 +198,7 @@ if __name__ == "__main__":
                     for index in index_list:
                         train_batch_text_list.append(train_batch_text_list[index])
                         train_batch_tag_list.append(train_batch_tag_list[index])
+                        train_batch_out_list.append(train_batch_out_list[index])
 
             # tag target matrix
             train_tag_matrix = process_batch_tag(train_batch_tag_list, nerdata.label_dict)
@@ -203,15 +206,14 @@ if __name__ == "__main__":
             train_mask_matrix = make_mask(train_batch_tag_list)
             # forward computation
             train_batch_result, train_loss, loss_crf, loss_ft, train_input_data, loss_list = model(train_batch_text_list, train_mask_matrix, train_tag_matrix, fine_tune, args.gamma)
-
             # Augment current training data for next round training
             loss_list = loss_list.view(-1, batch_size)
             sorted_loss_list, sorted_loss_index_list = torch.sort(loss_list[0], descending=args.augment_descending)
             to_augment_data_idxs = sorted_loss_index_list[:int(args.batch_size * args.augment_percentage)]
-            to_augment_correct_data = [''.join([bert_vocab.idx2token(data) for data in train_batch_tag_list[idx] if bert_vocab.idx2token(data) != CLS and  bert_vocab.idx2token(data) != MASK and bert_vocab.idx2token(data) != SEP and bert_vocab.idx2token(data) != PAD]) for idx in to_augment_data_idxs]
+            to_augment_correct_data = [''.join([data for data in train_batch_out_list[idx] if data != CLS and data != MASK and data != SEP and data != PAD]) for idx in to_augment_data_idxs]
+            print(to_augment_correct_data)
             augment_data = dataAugmentationByRule.augment(to_augment_correct_data)
-            to_augment_text_list, to_augment_tag_list = nerdata.process_one_list(augment_data, to_augment_correct_data)
-
+            to_augment_text_list, to_augment_tag_list, to_augment_out_list  = nerdata.process_one_list(augment_data, to_augment_correct_data)
             l2_reg = None
             for W in model.parameters():
                 if l2_reg is None:
@@ -248,7 +250,7 @@ if __name__ == "__main__":
                 with torch.no_grad():
                     with open(dev_eval_path, 'w', encoding = 'utf8') as o:
                         for dev_step in range(dev_step_num):
-                            dev_batch_text_list, dev_batch_tag_list = nerdata.get_next_batch(batch_size = batch_size, mode = 'dev')
+                            dev_batch_text_list, dev_batch_tag_list, dev_batch_out_list = nerdata.get_next_batch(batch_size = batch_size, mode = 'dev')
                             dev_tag_matrix = process_batch_tag(dev_batch_tag_list, nerdata.label_dict)
                             dev_mask_matrix = make_mask(dev_batch_tag_list)
                             dev_batch_result, _, _, _, dev_input_data, _ = model(dev_batch_text_list, dev_mask_matrix, dev_tag_matrix, fine_tune = False)
