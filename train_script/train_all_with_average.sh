@@ -1,4 +1,4 @@
-suffix="all_with_average"
+suffix="all_with_average_v2"
 bpath="./model/bert/"
 cpath="./ckpt/NLPCC_"$suffix"/"
 
@@ -26,13 +26,13 @@ nohup python -u main.py \
     --final_eval_path $cpath/dev_eval.txt \
     --test_eval_path $cpath/test_eval_%d.txt \
     --l2_lambda 1e-5 \
-    --training_max_len 64 > ./logs/train.nlpcc.all.with.average.log 2>&1&
+    --training_max_len 64 > ./logs/train.nlpcc.all.with.average.v2.log 2>&1&
 
 
 ##########################
 
 
-suffix="all_with_distribution"
+suffix="all_with_average_v2"
 bpath="./model/bert/"
 cpath="./ckpt/NLPCC_"$suffix"/"
 

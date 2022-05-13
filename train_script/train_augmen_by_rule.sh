@@ -1,4 +1,4 @@
-augment_percentage="0.1"
+augment_percentage=0.1
 augment_type="contributed"
 augment_method="by_rule"
 suffix="augment_"$augment_percentage"_"$augment_type"_"$augment_method"_"
@@ -13,7 +13,7 @@ nohup python -u main.py \
     --train_data /data/yumenghsuan/cgec_data/nlpcc/train.txt \
     --dev_data /data/yumenghsuan/cgec_data/nlpcc/test.txt\
     --test_data /data/yumenghsuan/cgec_data/nlpcc/test.txt\
-    --batch_size 80 \
+    --batch_size 60 \
     --lr 1e-5 \
     --dropout 0.1 \
     --number_epoch 30 \

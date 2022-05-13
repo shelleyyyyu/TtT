@@ -271,7 +271,7 @@ if __name__ == "__main__":
                     print('At epoch %d, official f0.5 : %.4f, precision : %.4f, recall : %.4f' % (epoch, correct_wrong_f0_5, correct_wrong_p, correct_wrong_r))
 
                     if correct_wrong_f0_5 > max_dev_f0_5:
-                        ckpt_fname = directory + '/epoch_%d_dev_f1_%.3f' % (epoch, correct_wrong_f0_5)
+                        ckpt_fname = directory + '/best_result' #% (epoch, correct_wrong_f0_5)
                         max_dev_f0_5 = correct_wrong_f0_5
                         # dev_acc_list.append(correct_wrong_acc)
                         dev_f0_5_list.append(correct_wrong_f0_5)

@@ -61,3 +61,5 @@ nohup python -u evaluation_test.py \
     --training_max_len 64 \
     --restore_ckpt_path ./ckpt/delete_only_epoch_29_dev_f1_0.512 \
     --test_data ./data/NLPCC/nlpcc/test_sep_insert.txt > ./logs/test.nlpcc.delete.only.log 2>&1&
+
+At this run, the maximum dev acc:0.634064, f1:0.504319, dev precision:0.647256, dev recall:0.413093; checkpoint filename:./ckpt/NLPCC_delete_only_v2//epoch_27
