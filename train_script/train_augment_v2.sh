@@ -9,12 +9,22 @@ cpath="/data/yumenghsuan/cgec/ckpt/NLPCC_"$suffix"/"
 -----
 
 augment_percentage="0.2"
+batch_size="70"
+augment_type="contributed"
+augment_method="by_rule"
+suffix="augment_"$augment_percentage"_"$augment_type"_"$augment_method"_"
+bpath="./model/bert/"
+cpath="./ckpt/NLPCC_"$suffix"/"
+
+------
+
+augment_percentage="0.3"
 batch_size="60"
 augment_type="contributed"
 augment_method="by_rule"
 suffix="augment_"$augment_percentage"_"$augment_type"_"$augment_method"_"
 bpath="./model/bert/"
-cpath="/data/yumenghsuan/cgec/ckpt/NLPCC_"$suffix"/"
+cpath="./ckpt/NLPCC_"$suffix"/"
 
 ------
 
@@ -23,9 +33,9 @@ mkdir -p $cpath
 nohup python -u main.py \
     --bert_path  $bpath/bert.ckpt\
     --bert_vocab $bpath/vocab.txt \
-    --train_data /data/yumenghsuan/cgec_data/nlpcc/train.txt \
-    --dev_data /data/yumenghsuan/cgec_data/nlpcc/test.txt\
-    --test_data /data/yumenghsuan/cgec_data/nlpcc/test.txt\
+    --train_data ./data/NLPCC/nlpcc/train.txt \
+    --dev_data ./data/NLPCC/nlpcc/test.txt\
+    --test_data ./data/NLPCC/nlpcc/test.txt\
     --batch_size $batch_size \
     --lr 1e-5 \
     --dropout 0.1 \
