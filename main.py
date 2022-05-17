@@ -129,12 +129,11 @@ if __name__ == "__main__":
                 train_batch_text_list, train_batch_tag_list, train_batch_out_list = nerdata.get_next_batch(int(args.batch_size * (1+args.augment_percentage)), mode='train')
             else:
                 # if have previous augment batch, will not have augment data, random the train batch to pad the batch
-                train_batch_text_list, train_batch_tag_list, train_batch_out_list = nerdata.get_next_batch(
-                    int(int(args.batch_size * (1+args.augment_percentage))-len(to_augment_text_list)), mode='train')
+                train_batch_text_list, train_batch_tag_list, train_batch_out_list = nerdata.get_next_batch(int(int(args.batch_size * (1+args.augment_percentage))-len(to_augment_text_list)), mode='train')
                 train_batch_text_list.extend(to_augment_text_list)
                 train_batch_tag_list.extend(to_augment_tag_list)
                 train_batch_out_list.extend(to_augment_out_list)
-                to_augment_text_list, to_augment_tag_list = [], []
+                to_augment_text_list, to_augment_tag_list, to_augment_out_list = [], [], []
 
             # tag target matrix
             train_tag_matrix = process_batch_tag(train_batch_tag_list, nerdata.label_dict)
