@@ -143,6 +143,8 @@ if __name__ == "__main__":
             train_batch_result, train_loss, loss_crf, loss_ft, train_input_data, loss_list, train_batch_results_detail = model(train_batch_text_list, train_mask_matrix, train_tag_matrix, fine_tune, args.gamma)
 
             # Augment current training data for next round training
+            loss_list = loss_list.detach()
+            train_batch_results_detail = train_batch_results_detail.detach()
             loss_list = loss_list.view(-1, batch_size)
             sorted_loss_list, sorted_loss_index_list = torch.sort(loss_list[0], descending=args.augment_descending)
             to_augment_data_idxs = sorted_loss_index_list[:int(args.batch_size * args.augment_percentage)]
