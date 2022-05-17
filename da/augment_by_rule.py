@@ -75,9 +75,9 @@ class DataAugmentationByRule(object):
         self.weight = weight #[0.078, 0.027, 0.027, 0.102, 0.024, 0.182, 0.168, 0.204, 0.204, 0.006, 0.027, 0.168]
 
 
-    def augment_by_candidate(self, augment_data, to_augment_correct_data, to_augment_target_data, results_detail=None):
+    def augment_by_candidate(self, augment_data, results_detail=None):
         all_augment_data_list = []
-        for sent_idx, (primary_result, to_correct_data, target_data, result_details) in enumerate(zip(augment_data, to_augment_correct_data, to_augment_target_data, results_detail)):
+        for sent_idx, (primary_result, result_details) in enumerate(zip(augment_data, results_detail)):
             # 今天我在看了昨天买的书。	今天我在看昨天买的书。
             augment_data_list = []
             augment_data_list.append(primary_result)

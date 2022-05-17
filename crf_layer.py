@@ -205,4 +205,19 @@ class DynamicCRF(nn.Module):
         finalized_scores = torch.cat(finalized_scores, 1)
         finalized_scores[:, 1:] = finalized_scores[:, 1:] - finalized_scores[:, :-1]
 
-        return finalized_scores, finalized_tokens
+        # now get the topk candidates for each position
+        decode_results = []
+        traj_tokens = torch.stack(traj_tokens).transpose(1, 0)
+        last_layer_choice = best_index[:, None]
+        for batch_num in range(batch_size):
+            sent_decode_result = []
+            for idx, (word_list, possible_tokens) in enumerate(zip(beam_targets[batch_num], traj_tokens[batch_num])):
+                label, score = [], []
+                for w in list(possible_tokens):
+                    if word_list[w] not in label:
+                        label.append(word_list[w].item())
+                sent_decode_result.append(label)
+            sent_decode_result.append([beam_targets[batch_num][-1][last_layer_choice[batch_num]].item()])
+            decode_results.append(sent_decode_result)
+
+        return finalized_scores, finalized_tokens, decode_results

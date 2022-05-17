@@ -1,16 +1,16 @@
-suffix="delete_only"
+suffix="delete_only_v2"
 bpath="./model/bert/"
-cpath="/data/yumenghsuan/cgec/ckpt/NLPCC_"$suffix"/"
+cpath="./ckpt/NLPCC_"$suffix"/"
 
 mkdir -p $cpath
 
 nohup python -u main.py \
     --bert_path  $bpath/bert.ckpt\
     --bert_vocab $bpath/vocab.txt \
-    --train_data ./data/NLPCC/nlpcc/train_only_delete_augment_1.txt \
+    --train_data ./data/NLPCC/nlpcc/train_only_delete_augment_1_v2.txt \
     --dev_data ./data/NLPCC/nlpcc/test.txt\
     --test_data ./data/NLPCC/nlpcc/test.txt\
-    --batch_size 80 \
+    --batch_size 100 \
     --lr 1e-5 \
     --dropout 0.1 \
     --number_epoch 30 \
@@ -42,7 +42,6 @@ nohup python -u evaluation_test.py \
     --bert_vocab $bpath/vocab.txt \
     --train_data ./data/NLPCC/nlpcc/train_only_delete_augment_1.txt \
     --dev_data ./data/NLPCC/nlpcc/test.txt\
-    --test_data ./data/NLPCC/nlpcc/test_insert.txt\
     --batch_size 80 \
     --lr 1e-5 \
     --dropout 0.1 \
@@ -60,4 +59,7 @@ nohup python -u evaluation_test.py \
     --test_eval_path $cpath/test_eval_%d.txt \
     --l2_lambda 1e-5 \
     --training_max_len 64 \
-    --restore_ckpt_path ./ckpt/delete_only_epoch_29_dev_f1_0.512 > ./logs/test.nlpcc.delete.only.log 2>&1&
+    --restore_ckpt_path ./ckpt/delete_only_epoch_29_dev_f1_0.512 \
+    --test_data ./data/NLPCC/nlpcc/test_sep_insert.txt > ./logs/test.nlpcc.delete.only.log 2>&1&
+
+At this run, the maximum dev acc:0.634064, f1:0.504319, dev precision:0.647256, dev recall:0.413093; checkpoint filename:./ckpt/NLPCC_delete_only_v2//epoch_27
