@@ -89,6 +89,7 @@ class TtTModel(nn.Module):
 
     def forward(self, text_data, in_mask_matrix, in_tag_matrix, fine_tune=False, gamma=None):
         current_batch_size = len(text_data)
+        print('current_batch_size', current_batch_size)
         max_len = 0
         for instance in text_data:
             max_len = max(len(instance), max_len)
