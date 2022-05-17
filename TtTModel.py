@@ -87,8 +87,9 @@ class TtTModel(nn.Module):
         cost = cost.view((y.size(1), -1))
         return torch.mean(cost), g.view(y.shape), cost
 
-    def forward(self, text_data, in_mask_matrix, in_tag_matrix, fine_tune=False, gamma=None):
+    def forward(self, text_data, in_mask_matrix, in_tag_matrix, fine_tune=False, gamma=None, get_crf_detail=False):
         current_batch_size = len(text_data)
+        print('get_crf_detail', get_crf_detail)
         print('current_batch_size', current_batch_size)
         max_len = 0
         for instance in text_data:
@@ -145,7 +146,7 @@ class TtTModel(nn.Module):
             loss_crf = -1 * loss_crf
             loss_crf_list = -1 * loss_crf_list
 
-        decode_result = self.CRF_layer.decode(sequence_emissions, mask=mask_matrix)
+        decode_result = self.CRF_layer.decode(sequence_emissions, mask=mask_matrix, get_detail=get_crf_detail)
         self.best_decode_scores, self.best_decode_result, self.decode_result = decode_result
         self.best_decode_result = self.best_decode_result.tolist()
 

@@ -133,7 +133,7 @@ if __name__ == "__main__":
             # tag mask matrix
             train_mask_matrix = make_mask(train_batch_tag_list)
             # forward computation
-            train_batch_result, train_loss, loss_crf, loss_ft, train_input_data, loss_list, train_batch_results_detail = model(train_batch_text_list, train_mask_matrix, train_tag_matrix, fine_tune, args.gamma)
+            train_batch_result, train_loss, loss_crf, loss_ft, train_input_data, loss_list, train_batch_results_detail = model(train_batch_text_list, train_mask_matrix, train_tag_matrix, fine_tune, args.gamma, get_crf_detail=(args.augment_method == 'by_pos_auto' and epoch > args.augment_cold_start_epoch))
 
             # Augment current training data for next round training
             loss_list = loss_list.detach()
@@ -141,7 +141,6 @@ if __name__ == "__main__":
             sorted_loss_list, sorted_loss_index_list = torch.sort(loss_list[0], descending=args.augment_descending)
             to_augment_data_idxs = sorted_loss_index_list[:int(args.batch_size * args.augment_percentage)]
             to_augment_correct_data = [''.join([data for data in train_batch_out_list[idx] if data != CLS and data != MASK and data != SEP and data != PAD]) for idx in to_augment_data_idxs]
-            to_augment_correct_data_detail = [train_batch_results_detail[idx] for idx in to_augment_data_idxs]
 
             augment_data = []
             # 'by_rule', 'by_pos_auto', 'by_pos_rule'
@@ -150,6 +149,7 @@ if __name__ == "__main__":
                 augment_data = dataAugmentationByRule.augment(to_augment_correct_data)
             elif args.augment_method == 'by_pos_auto':
                 if epoch > args.augment_cold_start_epoch:
+                    to_augment_correct_data_detail = [train_batch_results_detail[idx] for idx in to_augment_data_idxs]
                     # 2. pos/candidate based augmentation
                     augment_data = [''.join([bert_vocab.idx2token(result) for result in train_result if
                                              bert_vocab.idx2token(result) != CLS and bert_vocab.idx2token(
