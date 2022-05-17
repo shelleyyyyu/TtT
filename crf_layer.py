@@ -71,7 +71,7 @@ class DynamicCRF(nn.Module):
         assert reduction == 'token_mean'
         return llh.sum() / mask.type_as(emissions).sum(), llh / mask.type_as(emissions).sum()
 
-    def decode(self, emissions, mask=None, beam=None):
+    def decode(self, emissions, mask=None, beam=None, get_detail=False):
         """
         Find the most likely output sequence using Viterbi algorithm.
 
@@ -83,7 +83,7 @@ class DynamicCRF(nn.Module):
         Returns:
             `~torch.LongTensor`: decoded sequence from the CRF model
         """
-        return self._viterbi_decode(emissions, mask, beam)
+        return self._viterbi_decode(emissions, mask, beam, get_detail)
 
     def _compute_score(self, emissions, targets, masks=None):
         batch_size, seq_len = targets.size()
